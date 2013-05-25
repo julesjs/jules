@@ -11,13 +11,13 @@
 ivar.formAgregator = {};
 
 $(document).ready(function() {
-	console.log(jules.validate([1,2,'foo'], schema));
+	console.log(jules.validate('5', schema));
 });
 
 //int,float,number,array,string,bool,object
 var schema = {
 		'strict':true,
-		'type': ['array'], //TODO: type can be array of types??? or not needed
+		'type': ['array'],
 		//'disallow': 'int' //disallowed types, can be array
 		'required': false,
 		'default': null,
@@ -31,11 +31,12 @@ var schema = {
 			exclusive: false
 		},
 		
-		'items':[{type: 'int', min:1},{type: 'int', min:1},{type: 'string'}],
+		//'items':[{type: 'int', min:1},{type: 'int', min:1},{type: 'string'}],
 		
-		'additionalItems': false,
+		//'additionalItems': false,
 		
-		'unique': true, //if array items must be unique 	//uniqueProperties: []  //not Unique ITEMS!!! unique items dont have sense
+		//'unique': true, //if array items must be unique 	//uniqueProperties: []  //not Unique ITEMS!!! unique items dont have sense
+		not: [{type:'string'}, {regex:'15'}, {regex:'1e'}]
 		//'regex': 'f', //sting,int,float
 		//'format': 'email', //can be array
 		
@@ -252,6 +253,91 @@ jules.validator.type = function(value, type) {
 		return false;
 	} else {
 		return ivar.is(value, type);
+	}
+};
+
+jules.validator._allOf = function(value, keywordValue) {
+	for(var i = 0; i < keywordValue.length; i++) {
+		if(!jules._validate(value, keywordValue[i], false))
+			return false;
+	}
+	return true;
+};
+
+jules.validator.allOf = function(value, keywordValue) {
+	if(!ivar.isArray(value)) {
+		return jules.validator._allOf(value, keywordValue);
+	} else {
+		for(var i = 0; i < value.length; i++) {
+			if(!jules.validator._allOf(value[i], keywordValue))
+				return false;
+		}
+		return true;
+	}
+};
+
+jules.validator._anyOf = function(value, keywordValue) {
+	for(var i = 0; i < keywordValue.length; i++) {
+		if(jules._validate(value, keywordValue[i], false))
+			return true;
+	}
+	return false;
+};
+
+jules.validator.anyOf = function(value, keywordValue) {
+	if(!ivar.isArray(value)) {
+		return jules.validator._anyOf(value, keywordValue);
+	} else {
+		for(var i = 0; i < value.length; i++) {
+			if(!jules.validator._anyOf(value[i], keywordValue))
+				return false;
+		}
+		return true;
+	}
+};
+
+jules.validator._oneOf = function(value, keywordValue) {
+	var passed = 0;
+	for(var i = 0; i < keywordValue.length; i++) {
+		if(jules._validate(value, keywordValue[i], false))
+			passed += 1;
+	}
+	if(passed === 1)
+		return true;
+	return false;
+}
+
+jules.validator.oneOf = function(value, keywordValue) {
+	if(!ivar.isArray(value)) {
+		return jules.validator._oneOf(value, keywordValue);
+	} else {
+		for(var i = 0; i < value.length; i++) {
+			if(!jules.validator._oneOf(value[i], keywordValue))
+				return false;
+		}
+		return true;
+	}
+};
+
+jules.validator._not = function(value, keywordValue) {
+	for(var i = 0; i < keywordValue.length; i++) {
+		if(jules._validate(value, keywordValue[i], false))
+			return false;
+	}
+	return true;
+}
+
+jules.validator.not = function(value, keywordValue) {
+	if(ivar.isObject(keywordValue))
+		keywordValue = [keywordValue];
+	if(!ivar.isArray(value)) {
+		return jules.validator._not(value, keywordValue);
+	} else {
+		for(var i = 0; i < value.length; i++) {
+			if(!jules.validator._not(value[i], keywordValue))
+				return false;
+		}
+		return true;
 	}
 };
 
