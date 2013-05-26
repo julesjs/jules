@@ -127,24 +127,31 @@ Array.prototype.shuffle = function() {
     return res;
 };
 
+ivar.toMapKey = function(value) {
+	if (ivar.isNumber(value))
+		value = value.toString();
+	else if (ivar.isFunction(value))
+		value = 'fn_'+value.parseName();
+	else if (ivar.isDate(value))
+		value = 'date_'+value.getTime();
+	else if (ivar.isObject(value))
+		value = 'obj_'+ivar.crc32(JSON.stringify(value));
+	else if (ivar.isArray(value))
+		value = 'arr_'+value.toString();
+	
+	return value;
+};
+
 //NOTE: Members of the array must be unique!
 Array.prototype.map = function(field) {
 	var mapped = {};
 	for (var i = 0; i< this.length; i++) {
 		var value = this[i];
-		if (ivar.isSet(field))
-			value = this[i][field]
-		if (ivar.isFunction(value))
-			value = value.parseName();
-		if (ivar.isDate(value))
-			value = value.getTime();
-		if (ivar.isNumber(value))
-			value = value.toString();
-		if (ivar.isObject(value))
-			value = 'obj_'+ivar.crc32(JSON.stringify(value));
+		if (ivar.isSet(field)) value = this[i][field];
+		
+		value = ivar.toMapKey(value);
 			
-		if (ivar.isString(value))
-			mapped[value] = i;
+		!mapped.hasOwnProperty(value) ? mapped[value] = [i] : mapped[value].push(i);
 	}
 	return mapped;
 };

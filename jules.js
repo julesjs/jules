@@ -106,6 +106,28 @@ jules.invalid = function(field, value, schema, callback) {
 
 jules.validator = {};
 
+jules.validator.$ref = function(value, ref) {
+	//TODO:
+};
+
+jules.validator.dependencies = function(value, dep) {
+	for(var i in dep) {
+		//TODO: if (ivar.regex.regex.test(i)) {
+		if(ivar.isArray(dep[i])) {
+			if(value.hasOwnProperty(i))
+				for(var j = 0; j < dep[i].length; j++) {
+					if(!value.hasOwnProperty(dep[i][j])
+						return false;
+				}
+		} else {
+			if(value.hasOwnProperty(i))
+				if(!jules._validate(value, dep[i], false)
+						return false;
+		}
+	}
+	return true;
+};
+
 jules.validator.items = function(value, schema) {
 	if(ivar.isObject(schema)) {
 		for(var i = 0; i < value.length; i++) {
@@ -128,34 +150,101 @@ jules.validator.additionalItems = function(value, bool) {
 };
 
 jules.validator.required = function(value, bool) {
+	if(ivar.isArray(bool))
+		return jules.validator.requiredProperties(value, bool);
 	if(!bool) return true;
-	return ivar.isSet(value);
-}
+	return value !== undefined;
+};
+
+jules.validator.requiredProperties = function(value, arr) {
+	for(var i = 0; i < arr.length; i++) {
+		if(!value.hasOwnProperty(arr[i]))
+			return false;
+	}
+	return true;
+};
+
+jules.validator.maxProperties = function(value, num) {
+	var count = 0;
+	for(var i in value) {
+		count++;
+		if(count > num)
+			return false;
+	}
+	return true;
+};
+
+jules._property = function(value, prop) {
+	if(value.hasOwnProperty(prop)) {
+		if(!jules._validate(value[prop], prop[prop], false))
+			return false;
+	} else {
+		if(jules.schema.additionalProperties)
+			return false;
+	}
+	
+	return true;
+};
+
+jules._patternProperty = function(value, prop) {
+	var found = ivar.getProperty(value, ivar.toRegExp(prop));
+	for(var j = 0; j < found.length(); j++) {
+		if (!jules._validate(value[j], prop[prop], false))
+			return false;
+	}
+	if (jules.schema.additionalProperties && found.length === 0)
+		return false;
+		
+	return true;
+};
+
+jules.validator.patternProperties = function(value, prop) {
+	for(var i in prop) {
+		if(!jules._patternProperty(value, i))
+			return false;
+	}
+	return true;
+};
+
+jules.validator.properties = function(value, prop) {
+	for(var i in prop) {
+		if (ivar.regex.regex.test(i)) {
+			if (!jules._patternProperty(value, i))
+				return false;
+		} else {
+			if (!jules._property(value, i))
+				return false;
+		}
+	}
+	return true;
+};
+
+jules.validator.minProperties = function(value, num) {
+	var count = 0;
+	for(var i in value)
+		count++;
+	if(count < num)
+		return false;
+	return true;
+};
 
 jules.validator.only = function(value, enumobj) {
-	if(ivar.isNumber(value))
-		value = value.toString();
-	if(ivar.isObject(value))
-		value = 'obj_'+ivar.crc32(JSON.stringify(value));
+	value = ivar.toMapKey(value);
 	return enumobj.hasOwnProperty(value);
 };
 
 jules.validator.enum = jules.validator.only;
  
 jules.validator.forbidden = function(value, enumobj) {
-	if(ivar.isNumber(value))
-		value = value.toString();
+	value = ivar.toMapKey(value);
 	return !enumobj.hasOwnProperty(value);
 };
 
 jules.validator.unique = function(value) {
 	var aggr = {};
 	for(var i = 0; i < value.length; i++) {
-		var val = value[i];
+		var val = ivar.toMapKey(value[i]);
 		if(!aggr.hasOwnProperty(val)) {
-			if(ivar.isObject(val)) val = 'obj_'+ivar.crc32(JSON.stringify(val));
-			else if(ivar.isDate(val)) val = 'date_'+val.getTime();
-			else if(ivar.isArray(val)) val = JSON.stringify(val);
 			aggr[''+val] = 1;
 		} else {
 			return false;
@@ -207,6 +296,7 @@ jules.validator.regex = function(value, regex) {
 		regex = jules.utils.buildRegExp(regex);	
 	return regex.test(value);
 };
+jules.validator.pattern = jules.validator.regex;
 
 jules.validator.dividableBy = function(value, num) {
 	return value%num === 0;
@@ -245,6 +335,9 @@ jules.validator.format = function(value, format) {
 };
 
 jules.validator.type = function(value, type) {
+	if(type === 'any' || type === '*' || type === '')
+		return true;
+		
 	if(isArray(type)) {
 		for(var i = 0; i < type.length; i++) {
 			if(ivar.is(value, type[i]))
