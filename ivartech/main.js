@@ -350,7 +350,7 @@ ivar.eachArg = function(args, fn) {
 	return i-1;
 };
 
-ivar.getProperty(obj, re) {
+ivar.getProperty = function(obj, re) {
 	if (ivar.whatis(re) === 'regexp') {
 		var props = [];
 		for(var i in obj) {
