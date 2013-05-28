@@ -11,7 +11,7 @@
 ivar.formAgregator = {};
 
 $(document).ready(function() {
-	console.log(jules.validate('5', schema));
+	console.log(jules.validate('12345', schema));
 });
 
 //int,float,number,array,string,bool,object
@@ -21,7 +21,14 @@ var schema = {
 		//'disallow': 'int' //disallowed types, can be array
 		'required': false,
 		'default': null,
-		
+		'definitions': {
+			'test': {
+				min: 5
+			},
+			'test1': {
+				type: 'array'
+			},
+		},
 		'min': {
 			value: 0,
 			exclusive: false
@@ -31,12 +38,14 @@ var schema = {
 			exclusive: false
 		},
 		
+		"enum": ["123","1234","12345"],
+		
 		//'items':[{type: 'int', min:1},{type: 'int', min:1},{type: 'string'}],
 		
 		//'additionalItems': false,
 		
 		//'unique': true, //if array items must be unique 	//uniqueProperties: []  //not Unique ITEMS!!! unique items dont have sense
-		not: [{type:'string'}, {regex:'15'}, {regex:'1e'}]
+		allOf: [{$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#'}]
 		//'regex': 'f', //sting,int,float
 		//'format': 'email', //can be array
 		
@@ -56,23 +65,29 @@ jules.errors = [];
 jules.errorMessages = {};
 jules.errorMessages['type'] = 'Invalid type. Type of data should be {{schema}}';
 jules.schema = null;
+jules.refs = {};
 
 jules.validate = function validate(value, schema, aggregateErrors) {
 	if(aggregateErrors === undefined)
 		aggregateErrors = jules.aggregateErrors;
-	if(schema.hasOwnProperty('only') && ivar.isArray(schema['only']))
-		schema['only'] = schema['only'].map();
-	if(schema.hasOwnProperty('forbidden') && ivar.isArray(schema['forbidden']))
-		schema['forbidden'] = schema['forbidden'].map();
 		
+	if(schema.id)
+		jules.refs[schema.id] = schema;
 	jules.schema = schema;
 	
 	jules.errors = [];
-	//console.log(ivar.whatis(schema['enum']));
 	return jules._validate(value, schema, aggregateErrors);
 };
 
 jules._validate = function(value, schema, aggregateErrors) {
+
+	if(schema.hasOwnProperty('only') && ivar.isArray(schema['only']))
+		schema['only'] = schema['only'].map();
+	if(schema.hasOwnProperty('enum') && ivar.isArray(schema['enum']))
+		schema['enum'] = schema['enum'].map();
+	if(schema.hasOwnProperty('forbidden') && ivar.isArray(schema['forbidden']))
+		schema['forbidden'] = schema['forbidden'].map();
+		
 	for(var i in schema) {
 		if(ivar.isSet(schema[i]) && jules.validator[i]) {
 			var fieldValid = jules.validator[i](value, schema[i]);
@@ -108,6 +123,31 @@ jules.validator = {};
 
 jules.validator.$ref = function(value, ref) {
 	//TODO:
+	var schema = jules.schema;
+	var parts = ref.split('#');
+	if(ivar.isSet(parts[0]) && parts[0].length > 0) {
+		if(!jules.refs.hasOwnProperty(parts[0])) {
+			jules.getSchema(parts[0], function(schema) {
+				jules.refs[parts[0]] = schema;
+			});
+		}
+		schema = jules.refs[parts[0]];
+	}
+	
+	if(ivar.isSet(parts[1]) && parts[1].length > 0) {
+		if(parts[1].startsWith('/')) parts[1] = parts[1].removeFirst();
+		var props = parts[1].split('/');
+		for(var i = 0; i < props.length; i++) {
+			props[i] = decodeURIComponent(props[i]);
+			if(schema.hasOwnProperty(props[i])) {
+				schema = schema[props[i]];
+			} else {
+				jules.error('Invalid reference!');
+				return false;
+			}
+		}
+	}
+	return jules._validate(value, schema, false);
 };
 
 jules.validator.dependencies = function(value, dep) {
@@ -116,12 +156,12 @@ jules.validator.dependencies = function(value, dep) {
 		if(ivar.isArray(dep[i])) {
 			if(value.hasOwnProperty(i))
 				for(var j = 0; j < dep[i].length; j++) {
-					if(!value.hasOwnProperty(dep[i][j])
+					if(!value.hasOwnProperty(dep[i][j]))
 						return false;
 				}
 		} else {
 			if(value.hasOwnProperty(i))
-				if(!jules._validate(value, dep[i], false)
+				if(!jules._validate(value, dep[i], false))
 						return false;
 		}
 	}
@@ -455,5 +495,28 @@ jules.utils.buildRegExp = function(val) {
 };
 
 jules.error = function(msg) {
-	ivar.error(msg);
+	var heading = 'jules [error]: ';
+	ivar.error(heading + msg);
+};
+
+jules.getSchema = function(schema, callback) {
+    var request = new XMLHttpRequest(); 
+    request.onload = function(e) {
+    	var resp = request.responseText;
+		if (request.status == 200) {
+			try {
+				resp = JSON.parse(request.responseText);
+			} catch(e) {
+				jules.error('Invalid Schema JSON syntax - ' + e);
+				resp = undefined;
+			}
+		} else {
+			jules.error('Reference not accessible');
+			resp = undefined;
+		}
+		
+		callback(resp);
+	}
+    request.open('GET', schema, false);
+    request.send();
 };

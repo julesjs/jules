@@ -26,12 +26,18 @@ ivar._global = this;
 
 ivar._private.output; //define debug output function, print your output somewhere else...
 
-
 ivar.regex = {};
 ivar.regex.regex = /^\/(.*)\/([igmy]{0,4})$/;
 ivar.regex.email = /^[a-z0-9\._\-]+@[a-z\.\-]+\.[a-z]{2,4}$/;
+
+//FUCK THIS SHIT!
+ivar.regex.uri = /^(?:([a-z\-\+\.]+):)?(?:\/\/)?(?:([^?#@:]*)(?::([^?#@:]*))?@)?([a-z0-9\-\.]*)(?::([0-9]{1,5}))?((?:\/?[^?#\s\/]*)*)(?:\?([^#\s"]*))?(?:#([^\s"]*))?$/;
+ivar.regex.time = /^(([0-1][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])$/;
+
 ivar.regex.function_name = /function\s+([a-zA-Z0-9_\$]+?)\s*\(/;
-ivar.regex.time = /(([0-1][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])/;
+
+//i tried...   http://username:password@some.fine.example.com:8042/over/there/index.dtb?type=animal&name=narwhal#nose
+ivar.regex.getURIs = /(?:(?:https?|ftp):\/\/)(?:([^?#@:]*)(?::([^?#@:]*))?@)?((?:www\.|ftp\.)?([a-z0-9\-\.]+)\.(com|net|org|info|co|us|it|ca|cc|[a-z]{2,4})(:[0-9]{1,5})?((\/[^\/#\?\s]*)*)*)(\?([^#\s]*))?(#([^\s]*))?/ig;
 
 Math.randomArbitrary = function(min, max) {
   return Math.random() * (max - min) + min;
