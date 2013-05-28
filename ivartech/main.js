@@ -350,6 +350,19 @@ ivar.eachArg = function(args, fn) {
 	return i-1;
 };
 
+ivar.getProperty(obj, re) {
+	if (ivar.whatis(re) === 'regexp') {
+		var props = [];
+		for(var i in obj) {
+			if(re.test(i))
+				props.push(i);
+		}
+		return props;
+	} else {
+		return obj[re];
+	}
+};
+
 ivar._private.def_buildFnList = function(str) {
 	var args = str.split(',');
 	var argSets = [];

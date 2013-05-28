@@ -1,0 +1,16 @@
+{
+	"id": "test.json",
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"type": "string",
+	"min": 2,
+	"max": 7,
+	"enum": ["123","1234","12345"],
+	"definitions": {
+		"test": {
+			"min": 5
+		},
+		"test1": {
+			"type": "array"
+		}
+	}
+}
