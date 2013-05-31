@@ -136,6 +136,8 @@ Array.prototype.shuffle = function() {
 ivar.toMapKey = function(value) {
 	if (ivar.isNumber(value))
 		value = value.toString();
+	else if (ivar.isBool(value))
+		value = 'bool_'+value;
 	else if (ivar.isFunction(value))
 		value = 'fn_'+value.parseName();
 	else if (ivar.isDate(value))
@@ -411,7 +413,7 @@ ivar.def = function(functions, parent) {
 		var args = [];
 		ivar.eachArg(arguments, function(i, elem) {
 			args.push(elem);
-			types.push(whatis(elem));
+			types.push(ivar.whatis(elem));
 		});
 		var key = types.join();
 		if (fn.hasOwnProperty(key)) {
@@ -578,7 +580,7 @@ ivar.isEmpty = function(obj) {
  *
  *	@param	{any}	e		Message in a form of a string or any other object that can be presented in console
  */
-ivar.print = function(e) {
+ivar.echo = function(e) {
 	var args = [];
 	args.push('log');
 	ivar.eachArg(arguments, function(i, elem){
@@ -594,7 +596,7 @@ ivar.print = function(e) {
  *
  *	@param	{any}	e		Message in a form of a string or any other object that can be presented in console
  */
-ivar.warning = function warning(e) {
+ivar.warn = function warning(e) {
 	var args = [];
 	args.push('warn');
 	ivar.eachArg(arguments, function(i, elem){
@@ -687,7 +689,7 @@ ivar.systemMessage = function(fn, msg) {
 ivar.is = function(obj, type) {
 	if (type === 'number')
 		return isNumber(obj);
-	if (whatis(obj) === type)
+	if (ivar.whatis(obj) === type)
 		return true;
 	if (type === 'empty')
 		return ivar.isEmpty(obj);
@@ -707,7 +709,7 @@ ivar.isNumber = function(val) {
 };
 
 ivar.isInt = function(val) {
-	return ivar.is(val, 'int');
+	return ivar.is(val, 'integer');
 };
 
 ivar.isFloat = function(val) {
@@ -720,10 +722,6 @@ ivar.isString = function(val) {
 
 ivar.isObject = function(val) {
 	return ivar.is(val, 'object');
-};
-
-ivar.isCustomObject = function(val) {
-	return ivar.getClass() === 'object';
 };
 
 ivar.isFunction = function(val) {
@@ -770,7 +768,7 @@ ivar.whatis = function(val) {
 		if (val.toString().indexOf('.') > 0)
 			return 'float';
 		else
-			return 'int';
+			return 'integer';
 	}
 	
 	return type;
@@ -961,4 +959,4 @@ ivar.crc32 = function( /* String */ str, /* Number */ crc ) {
 /************ BORROWED CODE - END *************/
 
 ivar._private.libpath = ivar.findScriptPath('main.js');
-ivar.referenceInNamespace(ivar);
+//XXX: ivar.referenceInNamespace(ivar);
