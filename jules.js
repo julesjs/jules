@@ -11,8 +11,9 @@
 ivar.formAgregator = {};
 
 $(document).ready(function() {
-	console.log(jules.validate('12345', schema));
+	console.log(jules.validate('12345', schema, true));
 });
+
 
 //int,float,number,array,string,bool,object
 var schema = {
@@ -45,7 +46,8 @@ var schema = {
 		//'additionalItems': false,
 		
 		//'unique': true, //if array items must be unique 	//uniqueProperties: []  //not Unique ITEMS!!! unique items dont have sense
-		allOf: [{$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#'}]
+		allOf: [{$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#'}],
+		not: [{$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#'}]
 		//'regex': 'f', //sting,int,float
 		//'format': 'email', //can be array
 		
@@ -60,58 +62,59 @@ var schema = {
 
 var jules = {};
 
-jules.aggregateErrors = true;
 jules.errors = [];
 jules.errorMessages = {};
 jules.errorMessages['type'] = 'Invalid type. Type of data should be {{schema}}';
-jules.schema = null;
 jules.refs = {};
 
-jules.validate = function validate(value, schema, aggregateErrors) {
-	if(aggregateErrors === undefined)
-		aggregateErrors = jules.aggregateErrors;
-		
-	if(schema.id)
-		jules.refs[schema.id] = schema;
-	jules.schema = schema;
+jules.onEach = undefined;
+jules.onEachFail = undefined;
+jules.onEachPass = undefined;
+jules.onFinish = undefined;
+
+jules.validate = function(value, schema, aggregateErrors) {	
+	aggregateErrors = ivar.isSet(aggregateErrors)?aggregateErrors:false;
 	
-	jules.errors = [];
-	return jules._validate(value, schema, aggregateErrors);
-};
-
-jules._validate = function(value, schema, aggregateErrors) {
-
-	if(schema.hasOwnProperty('only') && ivar.isArray(schema['only']))
-		schema['only'] = schema['only'].map();
-	if(schema.hasOwnProperty('enum') && ivar.isArray(schema['enum']))
-		schema['enum'] = schema['enum'].map();
-	if(schema.hasOwnProperty('forbidden') && ivar.isArray(schema['forbidden']))
-		schema['forbidden'] = schema['forbidden'].map();
-		
+	if(!schema.id)
+		schema.id = 'schema_'+ivar.crc32(JSON.stringify(schema));
+	
+	if(!ivar.isSet(jules.refs[schema.id]))
+		jules.refs[schema.id] = schema;
+	
+	var result = true;
+	
+	console.log(schema);
+	
 	for(var i in schema) {
 		if(ivar.isSet(schema[i]) && jules.validator[i]) {
-			var fieldValid = jules.validator[i](value, schema[i]);
-			if(aggregateErrors)
-			console.log(i+': '+fieldValid);
-			if(!fieldValid) {
+			var valid = jules.validator[i](value, i, schema);
+			console.log(schema.id+' - '+i+': '+valid);
+			if(!valid) {
 				jules.invalid(i, value, schema[i]);
+				if(jules.onEachFail) jules.onEachFail(i, value, schema);
 				if(!aggregateErrors)
 					return false;
+			} else {
+				if(jules.onEachPass) jules.onEachPass(i, value, schema);
 			}
 		}
+		if(jules.onEach) jules.onEach(i, value, schema, valid);
 	}
 	
 	if(aggregateErrors && jules.errors.length > 0)
-		return false;
-	return true;
+		result = false;
+		
+	if(jules.onFinish) jules.onFinish(result, value, schema);
+	
+	return result;
 };
 
 jules.invalid = function(field, value, schema, callback) {
 	var val = value.toString();
-	if(ivar.isCustomObject(value))
+	if(ivar.isObject(value))
 		value = JSON.stringify(value);
 	var sch = schema.toString();
-	if(ivar.isCustomObject(schema))
+	if(ivar.isObject(schema))
 		sch = JSON.stringify(schema);
 	var message = jules.errorMessages[field]?jules.errorMessages[field].template({field: field, value: val, schema: sch}):'[error] '+field+': '+sch+' -> ' + val;
 	jules.errors.push(message);
@@ -121,9 +124,11 @@ jules.invalid = function(field, value, schema, callback) {
 
 jules.validator = {};
 
-jules.validator.$ref = function(value, ref) {
+// ====== [Validators]: Object ====== //
+
+jules.validator.$ref = function(value, i, schema) {
 	//TODO:
-	var schema = jules.schema;
+	var ref = schema[i];
 	var parts = ref.split('#');
 	if(ivar.isSet(parts[0]) && parts[0].length > 0) {
 		if(!jules.refs.hasOwnProperty(parts[0])) {
@@ -147,10 +152,11 @@ jules.validator.$ref = function(value, ref) {
 			}
 		}
 	}
-	return jules._validate(value, schema, false);
+	return jules.validate(value, schema);
 };
 
-jules.validator.dependencies = function(value, dep) {
+jules.validator.dependencies = function(value, i, schema) {
+	var dep = schema[i];
 	for(var i in dep) {
 		//TODO: if (ivar.regex.regex.test(i)) {
 		if(ivar.isArray(dep[i])) {
@@ -161,42 +167,15 @@ jules.validator.dependencies = function(value, dep) {
 				}
 		} else {
 			if(value.hasOwnProperty(i))
-				if(!jules._validate(value, dep[i], false))
+				if(!jules.validate(value, dep[i]))
 						return false;
 		}
 	}
 	return true;
 };
 
-jules.validator.items = function(value, schema) {
-	if(ivar.isObject(schema)) {
-		for(var i = 0; i < value.length; i++) {
-			var valid = jules._validate(value[i], schema, false);
-			if(!valid) return false;
-		}
-		return true;
-	} else {
-		for(var i = 0; i < schema.length; i++) {
-			var valid = jules._validate(value[i], schema[i], false);
-			if(!valid) return false;
-		}
-		return true;
-	}
-};
-
-jules.validator.additionalItems = function(value, bool) {
-	if(bool) return true;
-	return value.length <= jules.schema.items.length;
-};
-
-jules.validator.required = function(value, bool) {
-	if(ivar.isArray(bool))
-		return jules.validator.requiredProperties(value, bool);
-	if(!bool) return true;
-	return value !== undefined;
-};
-
-jules.validator.requiredProperties = function(value, arr) {
+jules.validator.requiredProperties = function(value, i, schema) {
+	var arr = schema[i];
 	for(var i = 0; i < arr.length; i++) {
 		if(!value.hasOwnProperty(arr[i]))
 			return false;
@@ -204,8 +183,10 @@ jules.validator.requiredProperties = function(value, arr) {
 	return true;
 };
 
-jules.validator.maxProperties = function(value, num) {
+jules.validator.maxProperties = function(value, i, schema) {
 	var count = 0;
+	var num = schema[i];
+	
 	for(var i in value) {
 		count++;
 		if(count > num)
@@ -214,71 +195,98 @@ jules.validator.maxProperties = function(value, num) {
 	return true;
 };
 
-jules._property = function(value, prop) {
+jules._property = function(value, prop, bool) {
 	if(value.hasOwnProperty(prop)) {
-		if(!jules._validate(value[prop], prop[prop], false))
+		if(!jules.validate(value[prop], prop[prop]))
 			return false;
 	} else {
-		if(jules.schema.additionalProperties)
+		if(!bool)
 			return false;
 	}
 	
 	return true;
 };
 
-jules._patternProperty = function(value, prop) {
+jules._patternProperty = function(value, prop, bool) {
 	var found = ivar.getProperty(value, ivar.toRegExp(prop));
 	for(var j = 0; j < found.length(); j++) {
-		if (!jules._validate(value[j], prop[prop], false))
+		if (!jules.validate(value[j], prop[prop]))
 			return false;
 	}
-	if (jules.schema.additionalProperties && found.length === 0)
-		return false;
+	if (!bool && found.length === 0) return false;
 		
 	return true;
 };
 
-jules.validator.patternProperties = function(value, prop) {
+jules.validator.patternProperties = function(value, i, schema) {
+	var prop = schema[i];
 	for(var i in prop) {
-		if(!jules._patternProperty(value, i))
+		if (!jules._patternProperty(value, i))
 			return false;
 	}
 	return true;
 };
 
-jules.validator.properties = function(value, prop) {
+jules.validator.properties = function(value, i, schema, bool) {
+	var prop = schema[i];
 	for(var i in prop) {
 		if (ivar.regex.regex.test(i)) {
-			if (!jules._patternProperty(value, i))
+			if (!jules._patternProperty(value, i, bool))
 				return false;
 		} else {
-			if (!jules._property(value, i))
+			if (!jules._property(value, i, bool))
 				return false;
 		}
 	}
 	return true;
 };
 
-jules.validator.minProperties = function(value, num) {
+jules.validator.additionalProperties = function(value, i, schema) {
+	var prop = schema[i];
+	if (ivar.isObject(prop)) {
+		return jules.validator.properties(value, i, schema, true);
+	} else {
+		if (prop === false) {
+			return jules.validator._noAdditionalProperties(value, i, schema);
+		}
+	}
+	
+	return true;
+};
+
+jules.validator._noAdditionalProperties = function(value, i, schema) {
+	var prop = schema[i];
+	var arr = [];
+	for(var i in value) {
+		arr.push(i);
+	}
+	
+	if(schema.hasOwnProperty('properties')) {
+		for(var i in schema.properties) {
+			if (ivar.regex.regex.test(i)) {
+				//TODO:
+			} else {
+				if (!jules._property(value, i, bool))
+					return false;
+			}
+		}
+	}
+	
+	if(schema.hasOwnProperty('patternProperties')) {
+	
+	}
+};
+
+jules.validator.minProperties = function(value, i, schema) {
 	var count = 0;
 	for(var i in value)
 		count++;
-	if(count < num)
+	if(count < schema[i])
 		return false;
 	return true;
 };
 
-jules.validator.only = function(value, enumobj) {
-	value = ivar.toMapKey(value);
-	return enumobj.hasOwnProperty(value);
-};
-
-jules.validator.enum = jules.validator.only;
- 
-jules.validator.forbidden = function(value, enumobj) {
-	value = ivar.toMapKey(value);
-	return !enumobj.hasOwnProperty(value);
-};
+// ====== [Validators]: Array ====== //
 
 jules.validator.unique = function(value) {
 	var aggr = {};
@@ -295,67 +303,39 @@ jules.validator.unique = function(value) {
 
 jules.validator.uniqueItems = jules.validator.unique;
 
-jules.validator.forbidden = function(value, enumobj) {
-	if(ivar.isNumber(value))
-		value = value.toString();
-	return !enumobj.hasOwnProperty(value);
+jules.validator.items = function(value, i, schema) {
+	schema = schema[i];
+	if(ivar.isObject(schema)) {
+		for(var i = 0; i < value.length; i++) {
+			var valid = jules.validate(value[i], schema);
+			if(!valid) return false;
+		}
+		return true;
+	} else {
+		for(var i = 0; i < schema.length; i++) {
+			var valid = jules.validate(value[i], schema[i]);
+			if(!valid) return false;
+		}
+		return true;
+	}
 };
 
-jules.validator.min = function(value, min, exclusive) {
-	if(value.hasOwnProperty('length'))
-		value = value.length;
-	min = jules.utils.buildRangeObj(min, exclusive);
-	return min.exclusive?min.value<value:min.value<=value; 
+jules.validator.additionalItems = function(value, i, schema) {
+	if(schema[i]) return true;
+	return value.length <= schema.items.length;
 };
 
-jules.validator.minimum = jules.validator.min;
-jules.validator.minItems = jules.validator.min;
+// ====== [Validators]: String ====== //
 
-jules.validator.max = function(value, max, exclusive) {
-	if(value.hasOwnProperty('length'))
-		value = value.length;
-	max = jules.utils.buildRangeObj(max, exclusive);
-	return max.exclusive?max.value>value:max.value>=value; 
-};
-
-jules.validator.maximum = jules.validator.max;
-jules.validator.maxItems = jules.validator.max;
-
-jules.validator.exclusiveMinimum = function(value, bool) {
-	return jules.validator.min(value, jules.schema.minimum, bool);
-};
-
-jules.validator.exclusiveMaximum = function(value, bool) {
-	return jules.validator.min(value, jules.schema.maximum, bool);
-};
-
-jules.validator.regex = function(value, regex) {
+jules.validator.regex = function(value, i, schema) {
 	if(!isString(value))
 		value = value.toString();
 	if(!(regex instanceof RegExp))
-		regex = jules.utils.buildRegExp(regex);	
+		regex = jules.utils.buildRegExp(schema[i]);	
 	return regex.test(value);
 };
+
 jules.validator.pattern = jules.validator.regex;
-
-jules.validator.dividableBy = function(value, num) {
-	return value%num === 0;
-};
-
-jules.validator.multipleOf = jules.validator.dividableBy;
-
-jules.validator.positive = function(value) {
-	return value > 0;
-};
-
-jules.validator.positiveInteger = jules.validator.positive;
-
-
-jules.validator.negative = function(value) {
-	return value < 0;
-};
-
-jules.validator.negativeInteger = jules.validator.negative;
 
 jules.formats = {}; //date-time YYYY-MM-DDThh:mm:ssZ, date YYYY-MM-DD, time hh:mm:ss, utc-milisec, regex, color, style, phone E.123, uri, url, email, ipv4, ipv6, host-name
 jules.formats.email = function(val) {
@@ -370,15 +350,114 @@ jules.formats.time = function(val) {
 	return ivar.regex.time.test(val);
 };
 
-jules.validator.format = function(value, format) {
-	return jules.formats[format](value);
+jules.formats.uri = function(val) {
+	return ivar.regex.uri.test(val);
 };
 
-jules.validator.type = function(value, type) {
+jules.validator.format = function(value, i, schema) {
+	return jules.formats[schema[i]](value);
+};
+
+// ====== [Validators]: Number ====== //
+
+jules.validator.min = function(value, i, schema, exclusive) {
+	var min = schema[i];
+	if(value.hasOwnProperty('length'))
+		value = value.length;
+	min = jules.utils.buildRangeObj(min, exclusive);
+	return min.exclusive?min.value<value:min.value<=value; 
+};
+
+jules.validator.minimum = jules.validator.min;
+jules.validator.minItems = jules.validator.min;
+jules.validator.minLength = jules.validator.min;
+
+jules.validator.max = function(value, i, schema, exclusive) {
+	var max = schema[i];
+	if(value.hasOwnProperty('length'))
+		value = value.length;
+	max = jules.utils.buildRangeObj(max, exclusive);
+	return max.exclusive?max.value>value:max.value>=value; 
+};
+
+jules.validator.maximum = jules.validator.max;
+jules.validator.maxItems = jules.validator.max;
+jules.validator.maxLength = jules.validator.max;
+
+jules.validator.exclusiveMinimum = function(value, i, schema) {
+	return jules.validator.min(value, 'minimum', schema, schema[i]);
+};
+
+jules.validator.exclusiveMaximum = function(value, i, schema) {
+	return jules.validator.min(value, 'maximum', schema, schema[i]);
+};
+
+jules.validator.dividableBy = function(value, i, schema) {
+	return value%schema[i] === 0;
+};
+
+jules.validator.multipleOf = jules.validator.dividableBy;
+
+jules.validator.positive = function(value) {
+	return value > 0;
+};
+
+jules.validator.positiveInteger = jules.validator.positive;
+
+jules.validator.negative = function(value) {
+	return value < 0;
+};
+
+jules.validator.negativeInteger = jules.validator.negative;
+
+// ====== [Validators]: Any Type ====== //
+
+//+contition
+jules.validator['if'] = function(value, i, schema) {
+	var not = ivar.isSet(schema[i]['not'])? schema[i]['not']: true;
+	var cond_res = jules.validate(value, schema[i]['condition']);
+	var bool = not? cond_res: !cond_res;
+	if(bool) {
+		return jules.validate(value, schema[i]['then']);
+	} else {
+		if(ivar.isSet(schema[i]['else']))
+			return jules.validate(value, schema[i]['else']);
+	}
+	return false;
+};
+
+//@see jules.validator.requiredProperties
+jules.validator.required = function(value, i, schema) {
+	var bool = schema[i];
+	if(ivar.isArray(bool))
+		return jules.validator.requiredProperties(value, i, schema);
+	if(!bool) return true;
+	return value !== undefined;
+};
+
+jules.validator._enum = function(value, i, schema, not) {
+	if(ivar.isArray(schema[i]))
+		schema[i] = schema[i].map();
+		
+	value = ivar.toMapKey(value);
+	var res = schema[i].hasOwnProperty(value);
+	return not? !res: res;
+}; 
+
+jules.validator.only = jules.validator._enum;
+
+jules.validator.enum = jules.validator._enum;
+ 
+jules.validator.forbidden = function(value, i, schema) {
+	jules.validator._enum(value, i, schema, true);
+};
+
+jules.validator.type = function(value, i, schema) {
+	var type = schema[i];
 	if(type === 'any' || type === '*' || type === '')
 		return true;
 		
-	if(isArray(type)) {
+	if(ivar.isArray(type)) {
 		for(var i = 0; i < type.length; i++) {
 			if(ivar.is(value, type[i]))
 				return true;
@@ -389,50 +468,52 @@ jules.validator.type = function(value, type) {
 	}
 };
 
-jules.validator._allOf = function(value, keywordValue) {
-	for(var i = 0; i < keywordValue.length; i++) {
-		if(!jules._validate(value, keywordValue[i], false))
+jules.validator._allOf = function(value, schema_arr) {
+	for(var i = 0; i < schema_arr.length; i++) {
+		if(!jules.validate(value, schema_arr[i]))
 			return false;
 	}
 	return true;
 };
 
-jules.validator.allOf = function(value, keywordValue) {
+jules.validator.allOf = function(value, i, schema) {
+	var key_val = schema[i];
 	if(!ivar.isArray(value)) {
-		return jules.validator._allOf(value, keywordValue);
+		return jules.validator._allOf(value, key_val);
 	} else {
 		for(var i = 0; i < value.length; i++) {
-			if(!jules.validator._allOf(value[i], keywordValue))
+			if(!jules.validator._allOf(value[i], key_val))
 				return false;
 		}
 		return true;
 	}
 };
 
-jules.validator._anyOf = function(value, keywordValue) {
-	for(var i = 0; i < keywordValue.length; i++) {
-		if(jules._validate(value, keywordValue[i], false))
+jules.validator._anyOf = function(value, schema_arr) {
+	for(var i = 0; i < schema_arr.length; i++) {
+		if(jules.validate(value, schema_arr[i]))
 			return true;
 	}
 	return false;
 };
 
-jules.validator.anyOf = function(value, keywordValue) {
+jules.validator.anyOf = function(value, i, schema) {
+	var key_val = schema[i];
 	if(!ivar.isArray(value)) {
-		return jules.validator._anyOf(value, keywordValue);
+		return jules.validator._anyOf(value, key_val);
 	} else {
 		for(var i = 0; i < value.length; i++) {
-			if(!jules.validator._anyOf(value[i], keywordValue))
+			if(!jules.validator._anyOf(value[i], key_val))
 				return false;
 		}
 		return true;
 	}
 };
 
-jules.validator._oneOf = function(value, keywordValue) {
+jules.validator._oneOf = function(value, schema_arr) {
 	var passed = 0;
-	for(var i = 0; i < keywordValue.length; i++) {
-		if(jules._validate(value, keywordValue[i], false))
+	for(var i = 0; i < schema_arr.length; i++) {
+		if(jules.validate(value, schema_arr[i], false))
 			passed += 1;
 	}
 	if(passed === 1)
@@ -440,34 +521,36 @@ jules.validator._oneOf = function(value, keywordValue) {
 	return false;
 }
 
-jules.validator.oneOf = function(value, keywordValue) {
+jules.validator.oneOf = function(value, i, schema) {
+	var key_val = schema[i];
 	if(!ivar.isArray(value)) {
-		return jules.validator._oneOf(value, keywordValue);
+		return jules.validator._oneOf(value, key_val);
 	} else {
 		for(var i = 0; i < value.length; i++) {
-			if(!jules.validator._oneOf(value[i], keywordValue))
+			if(!jules.validator._oneOf(value[i], key_val))
 				return false;
 		}
 		return true;
 	}
 };
 
-jules.validator._not = function(value, keywordValue) {
-	for(var i = 0; i < keywordValue.length; i++) {
-		if(jules._validate(value, keywordValue[i], false))
+jules.validator._not = function(value, schema_arr) {
+	for(var i = 0; i < schema_arr.length; i++) {
+		if(jules.validate(value, schema_arr[i], false))
 			return false;
 	}
 	return true;
 }
 
-jules.validator.not = function(value, keywordValue) {
-	if(ivar.isObject(keywordValue))
-		keywordValue = [keywordValue];
+jules.validator.not = function(value, i, schema) {
+	var key_val = schema[i];
+	if(ivar.isObject(key_val))
+		key_val = [key_val];
 	if(!ivar.isArray(value)) {
-		return jules.validator._not(value, keywordValue);
+		return jules.validator._not(value, key_val);
 	} else {
 		for(var i = 0; i < value.length; i++) {
-			if(!jules.validator._not(value[i], keywordValue))
+			if(!jules.validator._not(value[i], key_val))
 				return false;
 		}
 		return true;
