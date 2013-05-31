@@ -8,7 +8,6 @@
  * @since May 2013
  */
 
-//int,float,number,array,string,bool,object
 var schema = {
 		'strict':true,
 		'type': ['array'],
@@ -59,20 +58,26 @@ var schema = {
 
 var jules = {};
 jules.aggregateErrors = true;
+jules.labelSchemas = true;
 jules.errors = [];
 jules.errorMessages = {};
 jules.errorMessages['type'] = '{{schema_id}} Invalid type. Type of data should be {{key_val}}';
 jules.refs = {};
 
-jules.onEach = undefined;
-jules.onEachFail = undefined;
-jules.onEachPass = undefined;
+jules.onEachField = undefined;
+jules.onEachSchema = undefined;
 jules.onFinish = undefined;
+
+jules.valid = function(value, schema) {
+	var res = jules.validate(value, schema);
+		if(jules.onFinish) jules.onFinish(res, value, schema);
+	return res;
+};
 
 jules.validate = function(value, schema, aggregateErrors) {	
 	aggregateErrors = ivar.isSet(aggregateErrors)?aggregateErrors:jules.aggregateErrors;
 	
-	if(!schema.id)
+	if(!schema.id && jules.labelSchemas)
 		schema.id = 'schema_'+ivar.crc32(JSON.stringify(schema));
 	
 	if(!ivar.isSet(jules.refs[schema.id]))
@@ -80,28 +85,27 @@ jules.validate = function(value, schema, aggregateErrors) {
 	
 	var result = true;
 	
+	var errors = [];
+	
 	for(var i in schema) {
 		if(ivar.isSet(schema[i]) && jules.validator[i]) {
 			var valid = jules.validator[i](value, i, schema);
 			console.log(schema.id+' - '+i+': '+valid);
 			if(!valid) {
-				jules.invalid(i, value, schema);
-				if(jules.onEachFail) jules.onEachFail(i, value, schema);
+				errors.push(jules.invalid(i, value, schema));
 				if(!aggregateErrors) {
-					if(jules.onFinish) jules.onFinish(false, value, schema);
-					return false;
+					result = false;
+					break;
 				}
-			} else {
-				if(jules.onEachPass) jules.onEachPass(i, value, schema);
 			}
+			if(jules.onEachField) jules.onEachField(i, value, schema, valid);
 		}
-		if(jules.onEach) jules.onEach(i, value, schema, valid);
 	}
 	
-	if(aggregateErrors && jules.errors.length > 0)
-		result = false; // this is why!!! you imbecile
-		
-	if(jules.onFinish) jules.onFinish(result, value, schema);
+	if(aggregateErrors && errors.length > 0)
+		result = false;
+	jules.errors.concat(errors);
+	if(jules.onEachSchema) jules.onEachSchema(result, value, schema);
 	return result;
 };
 
@@ -323,7 +327,8 @@ jules.validator.additionalItems = function(value, i, schema) {
 // ====== [Validators]: String ====== //
 
 jules.validator.regex = function(value, i, schema) {
-	if(!isString(value))
+	var regex = schema[i];
+	if(!ivar.isString(value))
 		value = value.toString();
 	if(!(regex instanceof RegExp))
 		regex = jules.utils.buildRegExp(schema[i]);	
@@ -564,7 +569,7 @@ jules.utils.buildRangeObj = function(val, exclusive) {
 };
 
 jules.utils.buildRegExp = function(val) {
-	if(!isString(val))
+	if(!ivar.isString(val))
 		val = val.toString();
 	var re = val.toRegExp();
 	if(re)
@@ -601,6 +606,6 @@ jules.getSchema = function(schema, callback) {
 };
 
 //TEST
-ivar.echo(jules.validate('123f45', schema, true));
+ivar.echo(jules.valid('123f45', schema, true));
 
 
