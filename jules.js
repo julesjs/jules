@@ -8,16 +8,6 @@
  * @since May 2013
  */
 
-<<<<<<< HEAD
-=======
-ivar.formAgregator = {};
-
-$(document).ready(function() {
-	console.log(jules.validate('12345', schema, true));
-});
-
-
->>>>>>> 06762ce0cebe0bf66f1309440295f2f770acea31
 //int,float,number,array,string,bool,object
 var schema = {
 		'strict':true,
@@ -50,15 +40,11 @@ var schema = {
 		
 		//'unique': true, //if array items must be unique 	//uniqueProperties: []  //not Unique ITEMS!!! unique items dont have sense
 		allOf: [{$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#'}],
-<<<<<<< HEAD
 		not: [{$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#'}],
 		'if': {
 			condition: {type:'string'},
 			then: {regex: 'f'}
 		}
-=======
-		not: [{$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#'}]
->>>>>>> 06762ce0cebe0bf66f1309440295f2f770acea31
 		//'regex': 'f', //sting,int,float
 		//'format': 'email', //can be array
 		
@@ -72,17 +58,10 @@ var schema = {
 }
 
 var jules = {};
-<<<<<<< HEAD
 jules.aggregateErrors = true;
 jules.errors = [];
 jules.errorMessages = {};
 jules.errorMessages['type'] = '{{schema_id}} Invalid type. Type of data should be {{key_val}}';
-=======
-
-jules.errors = [];
-jules.errorMessages = {};
-jules.errorMessages['type'] = 'Invalid type. Type of data should be {{schema}}';
->>>>>>> 06762ce0cebe0bf66f1309440295f2f770acea31
 jules.refs = {};
 
 jules.onEach = undefined;
@@ -91,11 +70,7 @@ jules.onEachPass = undefined;
 jules.onFinish = undefined;
 
 jules.validate = function(value, schema, aggregateErrors) {	
-<<<<<<< HEAD
 	aggregateErrors = ivar.isSet(aggregateErrors)?aggregateErrors:jules.aggregateErrors;
-=======
-	aggregateErrors = ivar.isSet(aggregateErrors)?aggregateErrors:false;
->>>>>>> 06762ce0cebe0bf66f1309440295f2f770acea31
 	
 	if(!schema.id)
 		schema.id = 'schema_'+ivar.crc32(JSON.stringify(schema));
@@ -105,29 +80,17 @@ jules.validate = function(value, schema, aggregateErrors) {
 	
 	var result = true;
 	
-<<<<<<< HEAD
-=======
-	console.log(schema);
-	
->>>>>>> 06762ce0cebe0bf66f1309440295f2f770acea31
 	for(var i in schema) {
 		if(ivar.isSet(schema[i]) && jules.validator[i]) {
 			var valid = jules.validator[i](value, i, schema);
 			console.log(schema.id+' - '+i+': '+valid);
 			if(!valid) {
-<<<<<<< HEAD
 				jules.invalid(i, value, schema);
 				if(jules.onEachFail) jules.onEachFail(i, value, schema);
 				if(!aggregateErrors) {
 					if(jules.onFinish) jules.onFinish(false, value, schema);
 					return false;
 				}
-=======
-				jules.invalid(i, value, schema[i]);
-				if(jules.onEachFail) jules.onEachFail(i, value, schema);
-				if(!aggregateErrors)
-					return false;
->>>>>>> 06762ce0cebe0bf66f1309440295f2f770acea31
 			} else {
 				if(jules.onEachPass) jules.onEachPass(i, value, schema);
 			}
@@ -136,16 +99,9 @@ jules.validate = function(value, schema, aggregateErrors) {
 	}
 	
 	if(aggregateErrors && jules.errors.length > 0)
-<<<<<<< HEAD
 		result = false; // this is why!!! you imbecile
 		
 	if(jules.onFinish) jules.onFinish(result, value, schema);
-=======
-		result = false;
-		
-	if(jules.onFinish) jules.onFinish(result, value, schema);
-	
->>>>>>> 06762ce0cebe0bf66f1309440295f2f770acea31
 	return result;
 };
 
@@ -154,17 +110,10 @@ jules.invalid = function(i, value, schema) {
 	var val = value.toString();
 	if(ivar.isObject(value))
 		value = JSON.stringify(value);
-<<<<<<< HEAD
 	var sch = key_val.toString();
 	if(ivar.isObject(key_val))
 		sch = JSON.stringify(key_val);
 	var message = jules.errorMessages[i]?jules.errorMessages[i].template({i: i, value: val, schema_id: schema.id, key_val: sch}):'['+schema.id+ ' > error] '+i+': '+sch+' -> ' + val;
-=======
-	var sch = schema.toString();
-	if(ivar.isObject(schema))
-		sch = JSON.stringify(schema);
-	var message = jules.errorMessages[field]?jules.errorMessages[field].template({field: field, value: val, schema: sch}):'[error] '+field+': '+sch+' -> ' + val;
->>>>>>> 06762ce0cebe0bf66f1309440295f2f770acea31
 	jules.errors.push(message);
 }
 
@@ -394,7 +343,6 @@ jules.formats.regex = function(val) {
 
 jules.formats.time = function(val) {
 	return ivar.regex.time.test(val);
-<<<<<<< HEAD
 };
 
 jules.formats.uri = function(val) {
@@ -405,18 +353,6 @@ jules.validator.format = function(value, i, schema) {
 	return jules.formats[schema[i]](value);
 };
 
-=======
-};
-
-jules.formats.uri = function(val) {
-	return ivar.regex.uri.test(val);
-};
-
-jules.validator.format = function(value, i, schema) {
-	return jules.formats[schema[i]](value);
-};
-
->>>>>>> 06762ce0cebe0bf66f1309440295f2f770acea31
 // ====== [Validators]: Number ====== //
 
 jules.validator.min = function(value, i, schema, exclusive) {
@@ -445,21 +381,12 @@ jules.validator.maxLength = jules.validator.max;
 
 jules.validator.exclusiveMinimum = function(value, i, schema) {
 	return jules.validator.min(value, 'minimum', schema, schema[i]);
-<<<<<<< HEAD
 };
 
 jules.validator.exclusiveMaximum = function(value, i, schema) {
 	return jules.validator.min(value, 'maximum', schema, schema[i]);
 };
 
-=======
-};
-
-jules.validator.exclusiveMaximum = function(value, i, schema) {
-	return jules.validator.min(value, 'maximum', schema, schema[i]);
-};
-
->>>>>>> 06762ce0cebe0bf66f1309440295f2f770acea31
 jules.validator.dividableBy = function(value, i, schema) {
 	return value%schema[i] === 0;
 };
@@ -484,10 +411,7 @@ jules.validator.negativeInteger = jules.validator.negative;
 jules.validator['if'] = function(value, i, schema) {
 	var not = ivar.isSet(schema[i]['not'])? schema[i]['not']: true;
 	var cond_res = jules.validate(value, schema[i]['condition']);
-<<<<<<< HEAD
 	console.log(cond_res);
-=======
->>>>>>> 06762ce0cebe0bf66f1309440295f2f770acea31
 	var bool = not? cond_res: !cond_res;
 	if(bool) {
 		return jules.validate(value, schema[i]['then']);
