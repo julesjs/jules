@@ -8,41 +8,50 @@
  * @since May 2013
  */
 
+
 var schema = {
+		'id': 'test schema',
 		'strict':true,
-		'type': ['array'],
-		//'disallow': 'int' //disallowed types, can be array
-		'required': false,
-		'default': null,
+		'type': 'object',
+		//'disallow': ['integer', 'string'], //disallowed types, can be array
+		'required': ['lol'],
+		//'default': null,
 		'definitions': {
 			'test': {
-				min: 5
+				min: 0
 			},
 			'test1': {
 				type: 'array'
 			},
 		},
-		'min': {
-			value: 0,
-			exclusive: false
-		},
-		'max': {
-			value: 30,
-			exclusive: false
+		//'min': {
+		//	value: 0,
+		//	exclusive: false
+		//},
+		//'max': {
+		//	value: 30,
+		//	exclusive: false
+		//},
+		
+		minProperties: 1,
+		maxProperties: 3,
+		
+		properties: {
+			'lol': {$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#/definitions/test1'}
 		},
 		
-		"enum": ["123","1234","12345"],
+		"enum": ["123","1234",["123f45"], {lol:1, rofl:2, omg:3}, {lol:1, rofl:2}],
 		
 		//'items':[{type: 'int', min:1},{type: 'int', min:1},{type: 'string'}],
 		
 		//'additionalItems': false,
 		
 		//'unique': true, //if array items must be unique 	//uniqueProperties: []  //not Unique ITEMS!!! unique items dont have sense
-		allOf: [{$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#'}],
-		not: [{$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#'}],
+		//allOf: [{id: 'allof',$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#'}],
+		//not: [{id: 'not',$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#/definitions/test1'}],
 		'if': {
-			condition: {type:'string'},
-			then: {regex: 'f'}
+			condition: {type:'object'},
+			then: {dependencies: {'lol':['omg','rofl']}}
 		}
 		//'regex': 'f', //sting,int,float
 		//'format': 'email', //can be array
@@ -58,36 +67,48 @@ var schema = {
 
 var jules = {};
 jules.aggregateErrors = true;
-jules.labelSchemas = true;
 jules.errors = [];
-jules.errorMessages = {};
-jules.errorMessages['type'] = '{{schema_id}} Invalid type. Type of data should be {{key_val}}';
+jules.error_messages = {};
+jules.error_messages['type'] = '{{schema_id}} Invalid type. Type of data should be {{key_val}}';
 jules.refs = {};
+jules.current = null;
 
 jules.onEachField = undefined;
 jules.onEachSchema = undefined;
 jules.onFinish = undefined;
 
-jules.valid = function(value, schema) {
-	var res = jules.validate(value, schema);
-		if(jules.onFinish) jules.onFinish(res, value, schema);
+jules.validate = function(value, schema, callback) {
+	jules.errors = [];
+	jules.initRootSchema(schema);
+	var res = jules._validate(value, schema);
+	if(jules.onFinish) jules.onFinish(res, value, schema);
 	return res;
 };
 
-jules.validate = function(value, schema, aggregateErrors) {	
-	aggregateErrors = ivar.isSet(aggregateErrors)?aggregateErrors:jules.aggregateErrors;
-	
-	if(!schema.id && jules.labelSchemas)
+jules.initRootSchema = function(schema) {
+	if(!schema.id)
 		schema.id = 'schema_'+ivar.crc32(JSON.stringify(schema));
 	
 	if(!ivar.isSet(jules.refs[schema.id]))
 		jules.refs[schema.id] = schema;
+	
+	jules.current = jules.refs[schema.id];
+		
+	return jules.refs[schema.id];
+};
+
+jules._validate = function(value, schema, aggregateErrors) {
+
+	aggregateErrors = ivar.isSet(aggregateErrors)?aggregateErrors:jules.aggregateErrors;
 	
 	var result = true;
 	
 	var errors = [];
 	
 	for(var i in schema) {
+		if(jules.current.id !== schema.id && jules.refs.hasOwnProperty(schema.id)) {
+			jules.current = jules.refs[schema.id];
+		}
 		if(ivar.isSet(schema[i]) && jules.validator[i]) {
 			var valid = jules.validator[i](value, i, schema);
 			console.log(schema.id+' - '+i+': '+valid);
@@ -102,9 +123,10 @@ jules.validate = function(value, schema, aggregateErrors) {
 		}
 	}
 	
-	if(aggregateErrors && errors.length > 0)
+	if(aggregateErrors && errors.length > 0) {
+		jules.errors = jules.errors.concat(errors);
 		result = false;
-	jules.errors.concat(errors);
+	}
 	if(jules.onEachSchema) jules.onEachSchema(result, value, schema);
 	return result;
 };
@@ -117,8 +139,8 @@ jules.invalid = function(i, value, schema) {
 	var sch = key_val.toString();
 	if(ivar.isObject(key_val))
 		sch = JSON.stringify(key_val);
-	var message = jules.errorMessages[i]?jules.errorMessages[i].template({i: i, value: val, schema_id: schema.id, key_val: sch}):'['+schema.id+ ' > error] '+i+': '+sch+' -> ' + val;
-	jules.errors.push(message);
+	var message = jules.error_messages[i]?jules.error_messages[i].template({i: i, value: val, schema_id: schema.id, key_val: sch}):'['+schema.id+ ' > error] '+i+': '+sch+' -> ' + val;
+	return message;
 }
 
 jules.validator = {};
@@ -131,8 +153,10 @@ jules.validator.$ref = function(value, i, schema) {
 	var parts = ref.split('#');
 	if(ivar.isSet(parts[0]) && parts[0].length > 0) {
 		if(!jules.refs.hasOwnProperty(parts[0])) {
-			jules.getSchema(parts[0], function(schema) {
-				jules.refs[parts[0]] = schema;
+			jules.getSchema(parts[0], function(ref_schema) {
+				if(!ivar.isSet(ref_schema.id))
+					ref_schema.id = parts[0];
+				jules.initRootSchema(ref_schema);
 			});
 		}
 		schema = jules.refs[parts[0]];
@@ -141,6 +165,7 @@ jules.validator.$ref = function(value, i, schema) {
 	if(ivar.isSet(parts[1]) && parts[1].length > 0) {
 		if(parts[1].startsWith('/')) parts[1] = parts[1].removeFirst();
 		var props = parts[1].split('/');
+		schema = jules.current;
 		for(var i = 0; i < props.length; i++) {
 			props[i] = decodeURIComponent(props[i]);
 			if(schema.hasOwnProperty(props[i])) {
@@ -151,7 +176,10 @@ jules.validator.$ref = function(value, i, schema) {
 			}
 		}
 	}
-	return jules.validate(value, schema);
+	
+	if(!schema.id)
+		schema.id = ref;
+	return jules._validate(value, schema);
 };
 
 jules.validator.dependencies = function(value, i, schema) {
@@ -166,7 +194,7 @@ jules.validator.dependencies = function(value, i, schema) {
 				}
 		} else {
 			if(value.hasOwnProperty(i))
-				if(!jules.validate(value, dep[i]))
+				if(!jules._validate(value, dep[i]))
 						return false;
 		}
 	}
@@ -194,9 +222,10 @@ jules.validator.maxProperties = function(value, i, schema) {
 	return true;
 };
 
-jules._property = function(value, prop, bool) {
+jules._property = function(value, prop, schema, bool) {
+	console.log(schema);
 	if(value.hasOwnProperty(prop)) {
-		if(!jules.validate(value[prop], prop[prop]))
+		if(!jules._validate(value[prop], schema[prop]))
 			return false;
 	} else {
 		if(!bool)
@@ -209,7 +238,7 @@ jules._property = function(value, prop, bool) {
 jules._patternProperty = function(value, prop, bool) {
 	var found = ivar.getProperty(value, ivar.toRegExp(prop));
 	for(var j = 0; j < found.length(); j++) {
-		if (!jules.validate(value[j], prop[prop]))
+		if (!jules._validate(value[j], prop[prop]))
 			return false;
 	}
 	if (!bool && found.length === 0) return false;
@@ -230,10 +259,10 @@ jules.validator.properties = function(value, i, schema, bool) {
 	var prop = schema[i];
 	for(var i in prop) {
 		if (ivar.regex.regex.test(i)) {
-			if (!jules._patternProperty(value, i, bool))
+			if (!jules._patternProperty(value, i, prop, bool))
 				return false;
 		} else {
-			if (!jules._property(value, i, bool))
+			if (!jules._property(value, i, prop, bool))
 				return false;
 		}
 	}
@@ -306,13 +335,13 @@ jules.validator.items = function(value, i, schema) {
 	schema = schema[i];
 	if(ivar.isObject(schema)) {
 		for(var i = 0; i < value.length; i++) {
-			var valid = jules.validate(value[i], schema);
+			var valid = jules._validate(value[i], schema);
 			if(!valid) return false;
 		}
 		return true;
 	} else {
 		for(var i = 0; i < schema.length; i++) {
-			var valid = jules.validate(value[i], schema[i]);
+			var valid = jules._validate(value[i], schema[i]);
 			if(!valid) return false;
 		}
 		return true;
@@ -415,14 +444,13 @@ jules.validator.negativeInteger = jules.validator.negative;
 //+contition
 jules.validator['if'] = function(value, i, schema) {
 	var not = ivar.isSet(schema[i]['not'])? schema[i]['not']: true;
-	var cond_res = jules.validate(value, schema[i]['condition']);
-	console.log(cond_res);
+	var cond_res = jules._validate(value, schema[i]['condition']);
 	var bool = not? cond_res: !cond_res;
 	if(bool) {
-		return jules.validate(value, schema[i]['then']);
+		return jules._validate(value, schema[i]['then']);
 	} else {
 		if(ivar.isSet(schema[i]['else']))
-			return jules.validate(value, schema[i]['else']);
+			return jules._validate(value, schema[i]['else']);
 	}
 	return false;
 };
@@ -469,9 +497,22 @@ jules.validator.type = function(value, i, schema) {
 	}
 };
 
+jules.validator.disallow = function(value, i, schema) {
+	var type = schema[i];
+	if(ivar.isArray(type)) {
+		for(var i = 0; i < type.length; i++) {
+			if(ivar.is(value, type[i]))
+				return false;
+		}
+		return true;
+	} else {
+		return !ivar.is(value, type);
+	}
+};
+
 jules.validator._allOf = function(value, schema_arr) {
 	for(var i = 0; i < schema_arr.length; i++) {
-		if(!jules.validate(value, schema_arr[i]))
+		if(!jules._validate(value, schema_arr[i]))
 			return false;
 	}
 	return true;
@@ -492,7 +533,7 @@ jules.validator.allOf = function(value, i, schema) {
 
 jules.validator._anyOf = function(value, schema_arr) {
 	for(var i = 0; i < schema_arr.length; i++) {
-		if(jules.validate(value, schema_arr[i]))
+		if(jules._validate(value, schema_arr[i]))
 			return true;
 	}
 	return false;
@@ -514,7 +555,7 @@ jules.validator.anyOf = function(value, i, schema) {
 jules.validator._oneOf = function(value, schema_arr) {
 	var passed = 0;
 	for(var i = 0; i < schema_arr.length; i++) {
-		if(jules.validate(value, schema_arr[i], false))
+		if(jules._validate(value, schema_arr[i], false))
 			passed += 1;
 	}
 	if(passed === 1)
@@ -537,7 +578,7 @@ jules.validator.oneOf = function(value, i, schema) {
 
 jules.validator._not = function(value, schema_arr) {
 	for(var i = 0; i < schema_arr.length; i++) {
-		if(jules.validate(value, schema_arr[i], false))
+		if(jules._validate(value, schema_arr[i], false))
 			return false;
 	}
 	return true;
@@ -606,6 +647,6 @@ jules.getSchema = function(schema, callback) {
 };
 
 //TEST
-ivar.echo(jules.valid('123f45', schema, true));
+ivar.echo(jules.validate({lol:1, rofl:2, omg:3}, schema));
 
 
