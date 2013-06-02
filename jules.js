@@ -36,12 +36,15 @@ var schema = {
 		minProperties: 1,
 		maxProperties: 3,
 		
-		patternProperties: {
+		properties: {
 			'/lo/': {$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#/definitions/test'},
-			'omg': {$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json'}
+			'omg': {},
+			'rofl': {}
 		},
 		
-		"enum": ["123","1234",["123f45"], {lol:1, rofl:2, omg:3}, {lol:1, rofl:2}],
+		"enum": ["123","1234",["123f45"], {lol:6, rofl:2, omg:3}, {lol:1, rofl:2}],
+		
+		additionalProperties: false,
 		
 		//'items':[{type: 'int', min:1},{type: 'int', min:1},{type: 'string'}],
 		
@@ -236,7 +239,7 @@ jules._property = function(value, prop, schema, bool) {
 };
 
 jules._patternProperty = function(value, prop, schema, bool) {
-	var found = ivar.getProperty(value, prop.toRegExp());
+	var found = ivar.getProperties(value, prop);
 	for(var j = 0; j < found.length; j++) {
 		if (!jules._validate(value[found[j]], schema[prop]))
 			return false;
@@ -278,31 +281,44 @@ jules.validator.additionalProperties = function(value, i, schema) {
 			return jules.validator._noAdditionalProperties(value, i, schema);
 		}
 	}
-	
 	return true;
 };
 
 jules.validator._noAdditionalProperties = function(value, i, schema) {
 	var prop = schema[i];
-	var arr = [];
-	for(var i in value) {
-		arr.push(i);
+	var arr = ivar.getProperties(value);
+	
+	var removePatternProperty = function(prop) {
+		var re = prop.toRegExp();
+		for(var i = 0; i < arr.length; i++) {
+			if(re.test(arr[i]))
+				arr.remove(i);
+		}
 	}
 	
 	if(schema.hasOwnProperty('properties')) {
 		for(var i in schema.properties) {
 			if (ivar.regex.regex.test(i)) {
-				//TODO:
+				removePatternProperty(i);
 			} else {
-				if (!jules._property(value, i, bool))
-					return false;
+				for(var j = 0; j < arr.length; j++) {
+					var id = arr.find(i);
+					if(id > -1)
+						arr.remove(id);
+				}
 			}
 		}
 	}
 	
 	if(schema.hasOwnProperty('patternProperties')) {
-	
+		for(var i in schema.patternProperties) {
+			removePatternProperty(i);
+		}
 	}
+	
+	if(arr.length > 0)
+		return false;
+	return true;
 };
 
 jules.validator.minProperties = function(value, i, schema) {

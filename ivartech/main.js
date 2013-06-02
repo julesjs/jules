@@ -352,8 +352,16 @@ ivar.eachArg = function(args, fn) {
 	return i-1;
 };
 
-ivar.getProperty = function(obj, re) {
-	if (ivar.whatis(re) === 'regexp') {
+ivar.getProperties = function(obj, re) {
+	if (!re) {
+		var props = [];
+		for(var i in obj) {
+			props.push(i);
+		}
+		return props;
+	} else {
+		if(ivar.whatis(re) !== 'regexp')
+			re = re.toRegExp();
 		var props = [];
 		for(var i in obj) {
 			if(re.test(i)) {
@@ -361,8 +369,6 @@ ivar.getProperty = function(obj, re) {
 			}
 		}
 		return props;
-	} else {
-		return obj[re];
 	}
 };
 
