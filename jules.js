@@ -36,8 +36,9 @@ var schema = {
 		minProperties: 1,
 		maxProperties: 3,
 		
-		properties: {
-			'lol': {$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#/definitions/test1'}
+		patternProperties: {
+			'/lo/': {$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#/definitions/test'},
+			'omg': {$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json'}
 		},
 		
 		"enum": ["123","1234",["123f45"], {lol:1, rofl:2, omg:3}, {lol:1, rofl:2}],
@@ -223,7 +224,6 @@ jules.validator.maxProperties = function(value, i, schema) {
 };
 
 jules._property = function(value, prop, schema, bool) {
-	console.log(schema);
 	if(value.hasOwnProperty(prop)) {
 		if(!jules._validate(value[prop], schema[prop]))
 			return false;
@@ -235,10 +235,10 @@ jules._property = function(value, prop, schema, bool) {
 	return true;
 };
 
-jules._patternProperty = function(value, prop, bool) {
-	var found = ivar.getProperty(value, ivar.toRegExp(prop));
-	for(var j = 0; j < found.length(); j++) {
-		if (!jules._validate(value[j], prop[prop]))
+jules._patternProperty = function(value, prop, schema, bool) {
+	var found = ivar.getProperty(value, prop.toRegExp());
+	for(var j = 0; j < found.length; j++) {
+		if (!jules._validate(value[found[j]], schema[prop]))
 			return false;
 	}
 	if (!bool && found.length === 0) return false;
@@ -249,7 +249,7 @@ jules._patternProperty = function(value, prop, bool) {
 jules.validator.patternProperties = function(value, i, schema) {
 	var prop = schema[i];
 	for(var i in prop) {
-		if (!jules._patternProperty(value, i))
+		if (!jules._patternProperty(value, i, prop))
 			return false;
 	}
 	return true;
@@ -647,6 +647,6 @@ jules.getSchema = function(schema, callback) {
 };
 
 //TEST
-ivar.echo(jules.validate({lol:1, rofl:2, omg:3}, schema));
+ivar.echo(jules.validate({lol:6, rofl:2, omg:3}, schema));
 
 

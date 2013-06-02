@@ -356,8 +356,9 @@ ivar.getProperty = function(obj, re) {
 	if (ivar.whatis(re) === 'regexp') {
 		var props = [];
 		for(var i in obj) {
-			if(re.test(i))
+			if(re.test(i)) {
 				props.push(i);
+			}
 		}
 		return props;
 	} else {
