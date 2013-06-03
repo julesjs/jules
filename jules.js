@@ -8,13 +8,13 @@
  * @since May 2013
  */
 
-
 var schema = {
-		'id': 'test schema',
+		'id': 'http://example.com/test-schema#',
+		"$schema": "https://dl.dropboxusercontent.com/u/2808807/schema#",
 		'strict':true,
-		'type': 'object',
+		'type': ['object','array'],
 		//'disallow': ['integer', 'string'], //disallowed types, can be array
-		'required': ['lol'],
+		'requiredProperties': ['lol'],
 		//'default': null,
 		'definitions': {
 			'test': {
@@ -42,7 +42,7 @@ var schema = {
 			'rofl': {}
 		},
 		
-		"enum": ["123","1234",["123f45"], {lol:6, rofl:2, omg:3}, {lol:1, rofl:2}],
+		"enum": ["123","1234",["123f45"], [1,2,3],{lol:6, rofl:2, omg:4}, {lol:1, rofl:2}],
 		
 		additionalProperties: false,
 		
@@ -53,10 +53,16 @@ var schema = {
 		//'unique': true, //if array items must be unique 	//uniqueProperties: []  //not Unique ITEMS!!! unique items dont have sense
 		//allOf: [{id: 'allof',$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#'}],
 		//not: [{id: 'not',$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#/definitions/test1'}],
-		'if': {
+		'if': [{
 			condition: {type:'object'},
-			then: {dependencies: {'lol':['omg','rofl']}}
-		}
+			then: {dependencies: {'lol':['omg','rofl']}},
+			'else': {}
+		}, {
+			not: true,
+			condition: {type:'array'},
+			then: {unique: true},
+			'else': {}
+		}]
 		//'regex': 'f', //sting,int,float
 		//'format': 'email', //can be array
 		
@@ -70,7 +76,8 @@ var schema = {
 }
 
 var jules = {};
-jules.aggregateErrors = true;
+jules.aggregate_errors = false;
+//jules.validate_schema = true;
 jules.errors = [];
 jules.error_messages = {};
 jules.error_messages['type'] = '{{schema_id}} Invalid type. Type of data should be {{key_val}}';
@@ -91,7 +98,7 @@ jules.validate = function(value, schema, callback) {
 
 jules.initRootSchema = function(schema) {
 	if(!schema.id)
-		schema.id = 'schema_'+ivar.crc32(JSON.stringify(schema));
+		schema.id = 'schema:'+ivar.crc32(JSON.stringify(schema));
 	
 	if(!ivar.isSet(jules.refs[schema.id]))
 		jules.refs[schema.id] = schema;
@@ -101,9 +108,9 @@ jules.initRootSchema = function(schema) {
 	return jules.refs[schema.id];
 };
 
-jules._validate = function(value, schema, aggregateErrors) {
+jules._validate = function(value, schema, aggregate_errors) {
 
-	aggregateErrors = ivar.isSet(aggregateErrors)?aggregateErrors:jules.aggregateErrors;
+	aggregate_errors = ivar.isSet(aggregate_errors)?aggregate_errors:jules.aggregate_errors;
 	
 	var result = true;
 	
@@ -113,21 +120,30 @@ jules._validate = function(value, schema, aggregateErrors) {
 		if(jules.current.id !== schema.id && jules.refs.hasOwnProperty(schema.id)) {
 			jules.current = jules.refs[schema.id];
 		}
-		if(ivar.isSet(schema[i]) && jules.validator[i]) {
-			var valid = jules.validator[i](value, i, schema);
-			console.log(schema.id+' - '+i+': '+valid);
-			if(!valid) {
-				errors.push(jules.invalid(i, value, schema));
-				if(!aggregateErrors) {
-					result = false;
-					break;
-				}
+		var type = ivar.whatis(value);
+		if(type === 'integer' || type === 'float')
+			type = 'number';
+		var valid = true;
+		if(jules.validator[i]) {
+			valid = jules.validator[i](value, i, schema);
+		} else if (jules.validator[type] && jules.validator[type][i]) {
+			valid = jules.validator[type][i](value, i, schema);
+		} else {
+			if(jules.onEachField) jules.onEachField(value, i, schema, valid);
+			continue;
+		}
+		console.log(schema.id+' - '+i+': '+valid);
+		if(jules.onEachField) jules.onEachField(i, value, schema, valid);
+		if(!valid) {
+			errors.push(jules.invalid(i, value, schema));
+			if(!aggregate_errors) {
+				result = false;
+				break;
 			}
-			if(jules.onEachField) jules.onEachField(i, value, schema, valid);
 		}
 	}
 	
-	if(aggregateErrors && errors.length > 0) {
+	if(aggregate_errors && errors.length > 0) {
 		jules.errors = jules.errors.concat(errors);
 		result = false;
 	}
@@ -147,46 +163,13 @@ jules.invalid = function(i, value, schema) {
 	return message;
 }
 
-jules.validator = {};
+ivar.namespace('jules.validator');
+ivar.namespace('jules.validator.object');
 
 // ====== [Validators]: Object ====== //
 
-jules.validator.$ref = function(value, i, schema) {
-	//TODO:
-	var ref = schema[i];
-	var parts = ref.split('#');
-	if(ivar.isSet(parts[0]) && parts[0].length > 0) {
-		if(!jules.refs.hasOwnProperty(parts[0])) {
-			jules.getSchema(parts[0], function(ref_schema) {
-				if(!ivar.isSet(ref_schema.id))
-					ref_schema.id = parts[0];
-				jules.initRootSchema(ref_schema);
-			});
-		}
-		schema = jules.refs[parts[0]];
-	}
-	
-	if(ivar.isSet(parts[1]) && parts[1].length > 0) {
-		if(parts[1].startsWith('/')) parts[1] = parts[1].removeFirst();
-		var props = parts[1].split('/');
-		schema = jules.current;
-		for(var i = 0; i < props.length; i++) {
-			props[i] = decodeURIComponent(props[i]);
-			if(schema.hasOwnProperty(props[i])) {
-				schema = schema[props[i]];
-			} else {
-				jules.error('Invalid reference!');
-				return false;
-			}
-		}
-	}
-	
-	if(!schema.id)
-		schema.id = ref;
-	return jules._validate(value, schema);
-};
-
-jules.validator.dependencies = function(value, i, schema) {
+//XXX: has _validate
+jules.validator.object.dependencies = function(value, i, schema) {
 	var dep = schema[i];
 	for(var i in dep) {
 		//TODO: if (ivar.regex.regex.test(i)) {
@@ -205,7 +188,7 @@ jules.validator.dependencies = function(value, i, schema) {
 	return true;
 };
 
-jules.validator.requiredProperties = function(value, i, schema) {
+jules.validator.object.requiredProperties = function(value, i, schema) {
 	var arr = schema[i];
 	for(var i = 0; i < arr.length; i++) {
 		if(!value.hasOwnProperty(arr[i]))
@@ -214,18 +197,7 @@ jules.validator.requiredProperties = function(value, i, schema) {
 	return true;
 };
 
-jules.validator.maxProperties = function(value, i, schema) {
-	var count = 0;
-	var num = schema[i];
-	
-	for(var i in value) {
-		count++;
-		if(count > num)
-			return false;
-	}
-	return true;
-};
-
+//XXX: has _validate
 jules._property = function(value, prop, schema, bool) {
 	if(value.hasOwnProperty(prop)) {
 		if(!jules._validate(value[prop], schema[prop]))
@@ -238,6 +210,7 @@ jules._property = function(value, prop, schema, bool) {
 	return true;
 };
 
+//XXX: has _validate
 jules._patternProperty = function(value, prop, schema, bool) {
 	var found = ivar.getProperties(value, prop);
 	for(var j = 0; j < found.length; j++) {
@@ -249,7 +222,7 @@ jules._patternProperty = function(value, prop, schema, bool) {
 	return true;
 };
 
-jules.validator.patternProperties = function(value, i, schema) {
+jules.validator.object.patternProperties = function(value, i, schema) {
 	var prop = schema[i];
 	for(var i in prop) {
 		if (!jules._patternProperty(value, i, prop))
@@ -258,8 +231,10 @@ jules.validator.patternProperties = function(value, i, schema) {
 	return true;
 };
 
-jules.validator.properties = function(value, i, schema, bool) {
+jules.validator.object.properties = function(value, i, schema, bool) {
 	var prop = schema[i];
+	if(!ivar.isSet(bool))
+		bool = true;
 	for(var i in prop) {
 		if (ivar.regex.regex.test(i)) {
 			if (!jules._patternProperty(value, i, prop, bool))
@@ -272,10 +247,10 @@ jules.validator.properties = function(value, i, schema, bool) {
 	return true;
 };
 
-jules.validator.additionalProperties = function(value, i, schema) {
+jules.validator.object.additionalProperties = function(value, i, schema) {
 	var prop = schema[i];
 	if (ivar.isObject(prop)) {
-		return jules.validator.properties(value, i, schema, true);
+		return jules.validator.object.properties(value, i, schema);
 	} else {
 		if (prop === false) {
 			return jules.validator._noAdditionalProperties(value, i, schema);
@@ -294,7 +269,7 @@ jules.validator._noAdditionalProperties = function(value, i, schema) {
 			if(re.test(arr[i]))
 				arr.remove(i);
 		}
-	}
+	};
 	
 	if(schema.hasOwnProperty('properties')) {
 		for(var i in schema.properties) {
@@ -321,7 +296,7 @@ jules.validator._noAdditionalProperties = function(value, i, schema) {
 	return true;
 };
 
-jules.validator.minProperties = function(value, i, schema) {
+jules.validator.object.minProperties = function(value, i, schema) {
 	var count = 0;
 	for(var i in value)
 		count++;
@@ -330,9 +305,22 @@ jules.validator.minProperties = function(value, i, schema) {
 	return true;
 };
 
-// ====== [Validators]: Array ====== //
+jules.validator.object.maxProperties = function(value, i, schema) {
+	var count = 0;
+	var num = schema[i];
+	
+	for(var i in value) {
+		count++;
+		if(count > num)
+			return false;
+	}
+	return true;
+};
 
-jules.validator.unique = function(value) {
+// ====== [Validators]: Array ====== //
+ivar.namespace('jules.validator.array');
+
+jules.validator.array.unique = function(value) {
 	var aggr = {};
 	for(var i = 0; i < value.length; i++) {
 		var val = ivar.toMapKey(value[i]);
@@ -345,8 +333,9 @@ jules.validator.unique = function(value) {
 	return true;
 };
 
-jules.validator.uniqueItems = jules.validator.unique;
+jules.validator.array.uniqueItems = jules.validator.array.unique;
 
+//XXX: this one has _validate
 jules.validator.items = function(value, i, schema) {
 	schema = schema[i];
 	if(ivar.isObject(schema)) {
@@ -364,14 +353,14 @@ jules.validator.items = function(value, i, schema) {
 	}
 };
 
-jules.validator.additionalItems = function(value, i, schema) {
+jules.validator.array.additionalItems = function(value, i, schema) {
 	if(schema[i]) return true;
 	return value.length <= schema.items.length;
 };
 
 // ====== [Validators]: String ====== //
-
-jules.validator.regex = function(value, i, schema) {
+ivar.namespace('jules.validator.string');
+jules.validator.string.regex = function(value, i, schema) {
 	var regex = schema[i];
 	if(!ivar.isString(value))
 		value = value.toString();
@@ -380,7 +369,7 @@ jules.validator.regex = function(value, i, schema) {
 	return regex.test(value);
 };
 
-jules.validator.pattern = jules.validator.regex;
+jules.validator.string.pattern = jules.validator.string.regex;
 
 jules.formats = {}; //date-time YYYY-MM-DDThh:mm:ssZ, date YYYY-MM-DD, time hh:mm:ss, utc-milisec, regex, color, style, phone E.123, uri, url, email, ipv4, ipv6, host-name
 jules.formats.email = function(val) {
@@ -399,11 +388,12 @@ jules.formats.uri = function(val) {
 	return ivar.regex.uri.test(val);
 };
 
-jules.validator.format = function(value, i, schema) {
+jules.validator.string.format = function(value, i, schema) {
 	return jules.formats[schema[i]](value);
 };
 
 // ====== [Validators]: Number ====== //
+ivar.namespace('jules.validator.number');
 
 jules.validator.min = function(value, i, schema, exclusive) {
 	var min = schema[i];
@@ -413,9 +403,9 @@ jules.validator.min = function(value, i, schema, exclusive) {
 	return min.exclusive?min.value<value:min.value<=value; 
 };
 
-jules.validator.minimum = jules.validator.min;
-jules.validator.minItems = jules.validator.min;
-jules.validator.minLength = jules.validator.min;
+jules.validator.number.minimum = jules.validator.min;
+jules.validator.array.minItems = jules.validator.min;
+jules.validator.string.minLength = jules.validator.min;
 
 jules.validator.max = function(value, i, schema, exclusive) {
 	var max = schema[i];
@@ -425,9 +415,9 @@ jules.validator.max = function(value, i, schema, exclusive) {
 	return max.exclusive?max.value>value:max.value>=value; 
 };
 
-jules.validator.maximum = jules.validator.max;
-jules.validator.maxItems = jules.validator.max;
-jules.validator.maxLength = jules.validator.max;
+jules.validator.number.maximum = jules.validator.max;
+jules.validator.array.maxItems = jules.validator.max;
+jules.validator.string.maxLength = jules.validator.max;
 
 jules.validator.exclusiveMinimum = function(value, i, schema) {
 	return jules.validator.min(value, 'minimum', schema, schema[i]);
@@ -437,45 +427,65 @@ jules.validator.exclusiveMaximum = function(value, i, schema) {
 	return jules.validator.min(value, 'maximum', schema, schema[i]);
 };
 
-jules.validator.dividableBy = function(value, i, schema) {
+jules.validator.number.dividableBy = function(value, i, schema) {
 	return value%schema[i] === 0;
 };
+jules.validator.number.multipleOf = jules.validator.number.dividableBy;
 
-jules.validator.multipleOf = jules.validator.dividableBy;
-
-jules.validator.positive = function(value) {
+jules.validator.number.positive = function(value) {
 	return value > 0;
 };
 
-jules.validator.positiveInteger = jules.validator.positive;
+jules.validator.positiveInteger = function(value) {
+	if(ivar.is(value, 'integer'))
+		return jules.validator.number.positive(value);
+	return false;
+};
 
-jules.validator.negative = function(value) {
+jules.validator.number.negative = function(value) {
 	return value < 0;
 };
 
-jules.validator.negativeInteger = jules.validator.negative;
+jules.validator.negativeInteger = function(value) {
+	if(ivar.is(value, 'integer'))
+		return jules.validator.number.negative(value);
+	return false;
+};
 
 // ====== [Validators]: Any Type ====== //
 
 //+contition
-jules.validator['if'] = function(value, i, schema) {
-	var not = ivar.isSet(schema[i]['not'])? schema[i]['not']: true;
-	var cond_res = jules._validate(value, schema[i]['condition']);
+jules.validator._if = function(value, if_obj) {
+	var not = ivar.isSet(if_obj['not'])? if_obj['not']: true;
+	var cond_res = jules._validate(value, if_obj['condition']);
 	var bool = not? cond_res: !cond_res;
 	if(bool) {
-		return jules._validate(value, schema[i]['then']);
+		return jules._validate(value, if_obj['then']);
 	} else {
-		if(ivar.isSet(schema[i]['else']))
-			return jules._validate(value, schema[i]['else']);
+		if(ivar.isSet(if_obj['else']))
+			return jules._validate(value, if_obj['else']);
 	}
-	return false;
+	return true;
+};
+
+jules.validator['if'] = function(value, i, schema) {
+	var if_obj = schema[i];
+	if (ivar.isArray(if_obj)) {
+		for (var i = 0; i < if_obj.length; i++) {
+			if(!jules.validator._if(value, if_obj[i]))
+				return false;
+		}
+	} else {
+		return jules.validator._if(value, if_obj);
+	}
+	return true;
 };
 
 //@see jules.validator.requiredProperties
 jules.validator.required = function(value, i, schema) {
 	var bool = schema[i];
 	if(ivar.isArray(bool))
-		return jules.validator.requiredProperties(value, i, schema);
+		return jules.validator.object.requiredProperties(value, i, schema);
 	if(!bool) return true;
 	return value !== undefined;
 };
@@ -615,6 +625,55 @@ jules.validator.not = function(value, i, schema) {
 	}
 };
 
+//XXX: has _validate, current, refs, getSchema
+jules.validator.$ref = function(value, i, schema) {
+	//TODO: $ref: '#', referencing itself
+	var ref = schema[i];
+	var parts = ref.split('#');
+	if(ivar.isSet(parts[0]) && parts[0].length > 0) {
+		if(!jules.refs.hasOwnProperty(parts[0])) {
+			jules.getSchema(parts[0], function(ref_schema) {
+				if(!ivar.isSet(ref_schema.id))
+					ref_schema.id = parts[0];
+				else
+					parts[0] = ref_schema.id;
+				jules.initRootSchema(ref_schema);
+			});
+		}
+		schema = jules.refs[parts[0]];
+	}
+	
+	if(ivar.isSet(parts[1]) && parts[1].length > 0) {
+		if(parts[1].startsWith('/')) parts[1] = parts[1].removeFirst();
+		var props = parts[1].split('/');
+		schema = jules.current;
+		for(var i = 0; i < props.length; i++) {
+			props[i] = decodeURIComponent(props[i]);
+			if(schema.hasOwnProperty(props[i])) {
+				schema = schema[props[i]];
+			} else {
+				jules.error('Invalid reference!');
+				return false;
+			}
+		}
+		
+		if(!schema.id)
+			schema.id = ref;
+	}
+	
+	//TODO:
+	if(parts[0].length === 0 && parts[1].length === 0)
+		schema = jules.current;
+	return jules._validate(value, schema);
+};
+
+jules.validateSchema = function(schema) {
+	//TODO:
+};
+
+//TODO: jules.validator.extended
+//TODO: hyper schema
+
 jules.utils = {};
 
 jules.utils.buildRangeObj = function(val, exclusive) {
@@ -663,6 +722,6 @@ jules.getSchema = function(schema, callback) {
 };
 
 //TEST
-ivar.echo(jules.validate({lol:6, rofl:2, omg:3}, schema));
+ivar.echo(jules.validate({lol:6, rofl:2, omg:4}, schema));
 
 
