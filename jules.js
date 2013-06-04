@@ -472,8 +472,11 @@ jules.validator._range = function(value, i, schema, exclusive) {
 	if(ivar.isNumber(mm))
 		mm = jules.utils.buildRangeObj(mm, exclusive);
 	
-	if (ivar.isObject(mm))
-		return jules.validator[fn](value, mm);
+	if (ivar.isObject(mm)) {
+		if(mm.hasOwnProperty('type') && type !== mm.type)
+			return true;
+		mm = [mm];
+	}
 	
 	var other_types = null;
 	

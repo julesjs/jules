@@ -55,7 +55,8 @@ Keywords used to describe the schema and not really used in validation, with som
   
 **[2] All types** - keywords that apply for all data types
   
-* **type** or **allow**[e] {string:type-enum | array[string:type-enum]}- Describes which data types are allowed. It can be a STRING or an ARRAY of strings that represent names of data types that can be passed. JSON data types are: 
+* **type** or **allow**[e] {string:type-enum | array[string:type-enum]}  
+- Describes which data types are allowed. It can be a STRING or an ARRAY of strings that represent names of data types that can be passed. JSON data types are: 
 	+ null
 	+ boolean
 	+ integer - integer only
@@ -73,16 +74,45 @@ If this property is not provided, it will be assumed that any/all data types are
 
 * **forbidden**[e] {array[any]} - Lists all forbidden values of an instance. Your instance MUST NOT equal to any of forbidden values. See **enum**.
 
-* **min**[e] {number | object:range-object | array[object:range-object]} - Represents a minimum for all types. It can be just a number and in that form it limits the size of an array or string, number of properties in an object, or minimal value for a number or an integer. If we want the minimum to be exclusive we can write the 'min' keyword value as a range-object: `min:{ value: 3, exclusive: true}`, so the instance value has to be more than 3, or to be longer than 3, or to have more than three properties. If we want to define minimum for each separate type, that is if we validate more than one data type with one schema, we can write an array of range object adding a property 'type'. For example:  
+* **min** [e] {number | object:range-object | array[object:range-object]}  
+- Represents a minimum for all data types. It can be just a number and in that form it limits the size of an array or string, number of properties in an object, or minimal value for a number or an integer. If we want the minimum to be exclusive we can write the 'min' keyword value as a range-object: `min:{ value: 3, exclusive: true}`, so the instance value has to be more than 3, or to be longer than 3, or to have more than three properties. If we want to define minimum for each separate data type, that is if we validate more than one data type with one schema, we can write an array of range object adding a property 'type' to them. For example:  
 ```javascript
-	min:[{type: 'object', value:5, exclusive: true},  
+	min:[{type: 'object', value:5, exclusive: true},  //requires the object instance to have minimum of 6 properties
 		{type:'string', value:3}, //only for string  
-		{value: 2} //for any other type
-	]```
+		{value: 2} //for any other type  
+	]
+```
+A special example would be if you define min like this: `min:{type:string, value:4}`, which would mean that this minimum will be valid only when a type is string and it has 4 or more characters, for other types this minimum will validate as true.
+
+* **max** [e] {number | object:range-object | array[object:range-object]}  
+- Defines a maximum for all data types. Same as **min**, see it for usage details.
+
+* **if** [e] {object:condition-object | array[object:condition-object]}  
+- Used to make conditions inside a schema. That means if a schema that is presented as a condition passes then one schema must pass else if it fails some other schema must pass. The value of this keyword must be an object structured as a condition object, or an array of contiditon objects. Structure of a condition object looks like this:
+
+```javascript
+	if: {
+		not: false,
+		condition: {condition_schema},
+		then: {then_schema},
+		else: {else_schema}
+	}
+```
+Properties of a condition object are as follows:
+	+ not {boolean} - not mandatory, defines the negation of condition
+	+ condition {object:schema} - mandatory, MUST be a valid schema
+	+ then {object:schema} - mandatory, MUST be a valid schema
+	+ else {object:schema} - not mandatory, MUST be a valid schema  
+	  
+You can nest conditions of course  
+Even though the same result can be achieved with oneOf, anyOf, allOf, not, one must argue that this approach to logic is more elegant.
 
 Authors
 -------
-Sir Nikola Stamatovic Stamat of [IVARTECH][http://ivartech.com]
+* Sir Nikola Stamatovic Stamat of [IVARTECH][http://ivartech.com]  
+
+In consultation about extensions with:  
+* Sir Marko Maletic Kokos of [IVARTECH][http://ivartech.com]
 
 Other
 -----
