@@ -81,7 +81,7 @@ var schema = {
 }
 
 var jules = {};
-jules.aggregate_errors = true;
+jules.aggregate_errors = false;
 //jules.validate_schema = true;
 jules.errors = [];
 jules.error_messages = {};
@@ -565,6 +565,8 @@ jules.validator.type = function(value, i, schema) {
 		return ivar.is(value, type);
 	}
 };
+
+jules.validator.allow = jules.validator.type;
 
 jules.validator.disallow = function(value, i, schema) {
 	var type = schema[i];
