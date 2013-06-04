@@ -372,6 +372,15 @@ ivar.getProperties = function(obj, re) {
 	}
 };
 
+ivar.countProperties = function(obj, fn) {
+	var count = 0;
+	for(var i in obj) {
+		count++;
+		if(fn) fn(count, i);
+	}
+	return count;
+};
+
 ivar._private.def_buildFnList = function(str) {
 	var args = str.split(',');
 	var argSets = [];

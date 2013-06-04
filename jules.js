@@ -7,6 +7,9 @@
  * @copyright IVARTECH < http://ivartech.com >
  * @since May 2013
  */
+ 
+ 
+//TODO: hyper schema
 
 var schema = {
 		'id': 'http://example.com/test-schema#',
@@ -32,9 +35,11 @@ var schema = {
 		//	value: 30,
 		//	exclusive: false
 		//},
+		min: [{type: 'object', value: 2, exclusive: true}, {type: 'array', value: 3, exclusive: false}],
+		max: [{type: 'object', value: 4, exclusive: true}],
 		
 		minProperties: 1,
-		maxProperties: 3,
+		maxProperties: 4,
 		
 		properties: {
 			'/lo/': {$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#/definitions/test'},
@@ -60,7 +65,7 @@ var schema = {
 		}, {
 			not: true,
 			condition: {type:'array'},
-			then: {unique: true},
+			then: {max:[{type: 'object', value: 4, exclusive: true}]},
 			'else': {}
 		}]
 		//'regex': 'f', //sting,int,float
@@ -76,7 +81,7 @@ var schema = {
 }
 
 var jules = {};
-jules.aggregate_errors = false;
+jules.aggregate_errors = true;
 //jules.validate_schema = true;
 jules.errors = [];
 jules.error_messages = {};
@@ -88,11 +93,12 @@ jules.onEachField = undefined;
 jules.onEachSchema = undefined;
 jules.onFinish = undefined;
 
-jules.validate = function(value, schema, callback) {
+jules.validate = function(value, schema, nickcallback) {
 	jules.errors = [];
 	jules.initRootSchema(schema);
 	var res = jules._validate(value, schema);
 	if(jules.onFinish) jules.onFinish(res, value, schema);
+	if(nickcallback) nickcallback(); //This is how you remind me... Or is it Someday? Go suck somewhere else...
 	return res;
 };
 
@@ -132,7 +138,7 @@ jules._validate = function(value, schema, aggregate_errors) {
 			if(jules.onEachField) jules.onEachField(value, i, schema, valid);
 			continue;
 		}
-		console.log(schema.id+' - '+i+': '+valid);
+		//ivar.echo(schema.id+' - '+i+': '+valid);
 		if(jules.onEachField) jules.onEachField(i, value, schema, valid);
 		if(!valid) {
 			errors.push(jules.invalid(i, value, schema));
@@ -291,30 +297,27 @@ jules.validator._noAdditionalProperties = function(value, i, schema) {
 		}
 	}
 	
-	if(arr.length > 0)
-		return false;
-	return true;
+	return !arr.length > 0;
+};
+
+jules.validator._propertyRange = function(obj, del) {
+	var count = 0;
+	for(var i in obj) {
+		count++;
+		if(count > del)
+			break;
+	}
+	return count;
 };
 
 jules.validator.object.minProperties = function(value, i, schema) {
-	var count = 0;
-	for(var i in value)
-		count++;
-	if(count < schema[i])
-		return false;
-	return true;
+	var count = jules.validator._propertyRange(value, schema[i]);
+	return count >= schema[i];
 };
 
 jules.validator.object.maxProperties = function(value, i, schema) {
-	var count = 0;
-	var num = schema[i];
-	
-	for(var i in value) {
-		count++;
-		if(count > num)
-			return false;
-	}
-	return true;
+	var count = jules.validator._propertyRange(value, schema[i]);
+	return count <= schema[i];
 };
 
 // ====== [Validators]: Array ====== //
@@ -336,7 +339,7 @@ jules.validator.array.unique = function(value) {
 jules.validator.array.uniqueItems = jules.validator.array.unique;
 
 //XXX: this one has _validate
-jules.validator.items = function(value, i, schema) {
+jules.validator.array.items = function(value, i, schema) {
 	schema = schema[i];
 	if(ivar.isObject(schema)) {
 		for(var i = 0; i < value.length; i++) {
@@ -357,6 +360,9 @@ jules.validator.array.additionalItems = function(value, i, schema) {
 	if(schema[i]) return true;
 	return value.length <= schema.items.length;
 };
+
+jules.validator.array.minItems = jules.validator.min;
+jules.validator.array.maxItems = jules.validator.max;
 
 // ====== [Validators]: String ====== //
 ivar.namespace('jules.validator.string');
@@ -392,38 +398,22 @@ jules.validator.string.format = function(value, i, schema) {
 	return jules.formats[schema[i]](value);
 };
 
+jules.validator.string.minLength = jules.validator.min;
+jules.validator.string.maxLength = jules.validator.max;
+
 // ====== [Validators]: Number ====== //
 ivar.namespace('jules.validator.number');
 
-jules.validator.min = function(value, i, schema, exclusive) {
-	var min = schema[i];
-	if(value.hasOwnProperty('length'))
-		value = value.length;
-	min = jules.utils.buildRangeObj(min, exclusive);
-	return min.exclusive?min.value<value:min.value<=value; 
-};
+jules.validator.number.regex = jules.validator.string.regex;
 
 jules.validator.number.minimum = jules.validator.min;
-jules.validator.array.minItems = jules.validator.min;
-jules.validator.string.minLength = jules.validator.min;
-
-jules.validator.max = function(value, i, schema, exclusive) {
-	var max = schema[i];
-	if(value.hasOwnProperty('length'))
-		value = value.length;
-	max = jules.utils.buildRangeObj(max, exclusive);
-	return max.exclusive?max.value>value:max.value>=value; 
-};
-
 jules.validator.number.maximum = jules.validator.max;
-jules.validator.array.maxItems = jules.validator.max;
-jules.validator.string.maxLength = jules.validator.max;
 
-jules.validator.exclusiveMinimum = function(value, i, schema) {
+jules.validator.number.exclusiveMinimum = function(value, i, schema) {
 	return jules.validator.min(value, 'minimum', schema, schema[i]);
 };
 
-jules.validator.exclusiveMaximum = function(value, i, schema) {
+jules.validator.number.exclusiveMaximum = function(value, i, schema) {
 	return jules.validator.min(value, 'maximum', schema, schema[i]);
 };
 
@@ -436,7 +426,7 @@ jules.validator.number.positive = function(value) {
 	return value > 0;
 };
 
-jules.validator.positiveInteger = function(value) {
+jules.validator.number.positiveInteger = function(value) {
 	if(ivar.is(value, 'integer'))
 		return jules.validator.number.positive(value);
 	return false;
@@ -446,7 +436,7 @@ jules.validator.number.negative = function(value) {
 	return value < 0;
 };
 
-jules.validator.negativeInteger = function(value) {
+jules.validator.number.negativeInteger = function(value) {
 	if(ivar.is(value, 'integer'))
 		return jules.validator.number.negative(value);
 	return false;
@@ -454,11 +444,64 @@ jules.validator.negativeInteger = function(value) {
 
 // ====== [Validators]: Any Type ====== //
 
+jules.validator._min = function(value, min) {
+	if(!min.exclusive)
+		min.exclusive = false;
+	return min.exclusive?min.value<value:min.value<=value;
+};
+
+jules.validator._max = function(value, max) {
+	if(!max.exclusive)
+		max.exclusive = false;
+	return max.exclusive?max.value>value:max.value>=value;
+};
+
+jules.validator._range = function(value, i, schema, exclusive) {
+	var mm = schema[i];
+	var fn = '_'+i;
+	var type = ivar.whatis(value);
+	if(type === 'float')
+		type = 'number';
+	
+	if(type === 'object') {
+		value = ivar.countProperties(value); 
+	} else if (value.hasOwnProperty('length')) {
+		value = value.length;
+	}
+	
+	if(ivar.isNumber(mm))
+		mm = jules.utils.buildRangeObj(mm, exclusive);
+	
+	if (ivar.isObject(mm))
+		return jules.validator[fn](value, mm);
+	
+	var other_types = null;
+	
+	if (ivar.isArray(mm)) {
+		for(var i = 0; i < mm.length; i++) {
+			if(mm[i].hasOwnProperty('type')) {
+				if(type === mm[i].type)
+					return jules.validator[fn](value, mm[i]);
+			} else {
+				if(!other_types) other_types = mm[i];
+			}
+		}
+	}
+	
+	if(other_types)
+		return jules.validator[fn](value, other_types);
+		
+	return true;
+};
+
+jules.validator.min = jules.validator._range;
+jules.validator.max = jules.validator._range;
+
 //+contition
 jules.validator._if = function(value, if_obj) {
-	var not = ivar.isSet(if_obj['not'])? if_obj['not']: true;
+	var not = ivar.isSet(if_obj['not'])? if_obj['not']: false;
 	var cond_res = jules._validate(value, if_obj['condition']);
-	var bool = not? cond_res: !cond_res;
+	var bool = not? !cond_res: cond_res;
 	if(bool) {
 		return jules._validate(value, if_obj['then']);
 	} else {
@@ -584,9 +627,7 @@ jules.validator._oneOf = function(value, schema_arr) {
 		if(jules._validate(value, schema_arr[i], false))
 			passed += 1;
 	}
-	if(passed === 1)
-		return true;
-	return false;
+	return passed === 1;
 }
 
 jules.validator.oneOf = function(value, i, schema) {
@@ -625,6 +666,7 @@ jules.validator.not = function(value, i, schema) {
 	}
 };
 
+//TODO: REFERENCE RESOLVE!!! Needs refactoring in order to work
 //XXX: has _validate, current, refs, getSchema
 jules.validator.$ref = function(value, i, schema) {
 	//TODO: $ref: '#', referencing itself
@@ -667,15 +709,21 @@ jules.validator.$ref = function(value, i, schema) {
 	return jules._validate(value, schema);
 };
 
-jules.validateSchema = function(schema) {
-	//TODO:
+jules.validator['extends'] = function (value, i, schema) {
+	//TODO: jules.validator.extended
+	return true;
 };
 
-//TODO: jules.validator.extended
-//TODO: hyper schema
+jules.validateSchema = function(schema) {
+	if(schema.hasOwnProperty('$schema'))
+		return jules._validate(schema, schema.$schema, false);
+	return false;
+};
 
-jules.utils = {};
 
+// ====== Some utils... ====== //
+
+ivar.namespace('jules.utils');
 jules.utils.buildRangeObj = function(val, exclusive) {
 	if(ivar.isString(val))
 		val = parseFloat(val);
@@ -722,6 +770,6 @@ jules.getSchema = function(schema, callback) {
 };
 
 //TEST
-ivar.echo(jules.validate({lol:6, rofl:2, omg:4}, schema));
+ivar.echo(jules.validate([1,2,3], schema));
 
 
