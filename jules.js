@@ -480,9 +480,13 @@ jules.validator._range = function(value, i, schema, exclusive) {
 	
 	var other_types = null;
 	
+	if(type !== 'number' && ivar.isFloat(mm.value))
+		mm.value = Math.round(mm.value);
+	
 	if (ivar.isArray(mm)) {
 		for(var i = 0; i < mm.length; i++) {
 			if(mm[i].hasOwnProperty('type')) {
+			
 				if(type === mm[i].type)
 					return jules.validator[fn](value, mm[i]);
 			} else {

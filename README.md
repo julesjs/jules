@@ -83,12 +83,11 @@ If this property is not provided, it will be assumed that any/all data types are
 	]
 ```
 A special example would be if you define min like this: `min:{type:string, value:4}`, which would mean that this minimum will be valid only when a type is string and it has 4 or more characters, for other types this minimum will validate as true.
+**NOTE:** Float minimum values are only allowed for number type, in any other case THEY WILL BE ROUNDED.
 
-* **max** [e] {number | object:range-object | array[object:range-object]}  
-- Defines a maximum for all data types. Same as **min**, see it for usage details.
+* **max** [e] {number | object:range-object | array[object:range-object]} - Defines a maximum for all data types. Same as **min**, see it for usage details.
 
-* **if** [e] {object:condition-object | array[object:condition-object]}  
-- Used to make conditions inside a schema. That means if a schema that is presented as a condition passes then one schema must pass else if it fails some other schema must pass. The value of this keyword must be an object structured as a condition object, or an array of contiditon objects. Structure of a condition object looks like this:
+* **if** [e] {object:condition-object | array[object:condition-object]} - Used to make conditions inside a schema. That means if a schema that is presented as a condition passes then one schema must pass else if it fails some other schema must pass. The value of this keyword must be an object structured as a condition object, or an array of contiditon objects. Structure of a condition object looks like this:
 
 ```javascript
 	if: {
@@ -102,9 +101,8 @@ Properties of a condition object are as follows:
 	+ not {boolean} - not mandatory, defines the negation of condition
 	+ condition {object:schema} - mandatory, MUST be a valid schema
 	+ then {object:schema} - mandatory, MUST be a valid schema
-	+ else {object:schema} - not mandatory, MUST be a valid schema  
-	  
-You can nest conditions of course  
+	+ else {object:schema} - not mandatory, MUST be a valid schema  	  
+You can nest conditions of course.
 Even though the same result can be achieved with oneOf, anyOf, allOf, not, one must argue that this approach to logic is more elegant.
 
 Authors
