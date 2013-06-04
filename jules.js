@@ -536,8 +536,12 @@ jules.validator.required = function(value, i, schema) {
 	var bool = schema[i];
 	if(ivar.isArray(bool))
 		return jules.validator.object.requiredProperties(value, i, schema);
-	if(!bool) return true;
-	return value !== undefined;
+	return bool ? value !== undefined : true;
+};
+
+jules.validator.notEmpty = function(value, i, schema) {
+	var bool = schema[i];
+	return bool ? !ivar.isEmpty() : true;
 };
 
 jules.validator._enum = function(value, i, schema, not) {

@@ -54,9 +54,7 @@ Keywords used to describe the schema and not really used in validation, with som
 * **description** {string} - Describe your schema here, of course this property is far from mandatory too. But if you are going to publish your schema, better put a description so others will have a notion of what is it for.
   
 **[2] All types** - keywords that apply for all data types
-  
-* **type** or **allow**[e] {string:type-enum | array[string:type-enum]}  
-- Describes which data types are allowed. It can be a STRING or an ARRAY of strings that represent names of data types that can be passed. JSON data types are: 
+* **type** or **allow**[e] {string:type-enum | array[string:type-enum]} - Describes which data types are allowed. It can be a STRING or an ARRAY of strings that represent names of data types that can be passed. JSON data types are: 
 	+ null
 	+ boolean
 	+ integer - integer only
@@ -64,25 +62,24 @@ Keywords used to describe the schema and not really used in validation, with som
 	+ string
 	+ array 
 	+ object
-	+ any | * | empty string  
+	+ any | * | empty string
   
 If this property is not provided, it will be assumed that any/all data types are allowed.
 
-* **disallow**[d03] {string:type-enum | array[string:type-enum]} - Describes which data types are NOT allowed. Can be a string or an array of strings, see **type**.
+* **disallow** [d03] {string:type-enum | array[string:type-enum]} - Describes which data types are NOT allowed. Can be a string or an array of strings, see **type**.
 
-* **enum** or **only**[e] {array[any]} - Lists all allowed values in an array. Your instance MUST be equal to one of lisred values. Objects and array values are submited to CRC32 so the search could be performed faster (via hash tables). **NOTE:** That properties in object are stored without an order, so `{a:1,b:2} !== {b:2, a:1}`
+* **enum** or **only** [e] {array[any]} - Lists all allowed values in an array. Your instance MUST be equal to one of lisred values. Objects and array values are submited to CRC32 so the search could be performed faster (via hash tables). **NOTE:** That properties in object are stored without an order, so `{a:1,b:2} !== {b:2, a:1}`
 
-* **forbidden**[e] {array[any]} - Lists all forbidden values of an instance. Your instance MUST NOT equal to any of forbidden values. See **enum**.
+* **forbidden** [e] {array[any]} - Lists all forbidden values of an instance. Your instance MUST NOT equal to any of forbidden values. See **enum**.
 
-* **min** [e] {number | object:range-object | array[object:range-object]}  
-- Represents a minimum for all data types. It can be just a number and in that form it limits the size of an array or string, number of properties in an object, or minimal value for a number or an integer. If we want the minimum to be exclusive we can write the 'min' keyword value as a range-object: `min:{ value: 3, exclusive: true}`, so the instance value has to be more than 3, or to be longer than 3, or to have more than three properties. If we want to define minimum for each separate data type, that is if we validate more than one data type with one schema, we can write an array of range object adding a property 'type' to them. For example:  
+* **min** [e] {number | object:range-object | array[object:range-object]} - Represents a minimum for all data types. It can be just a number and in that form it limits the size of an array or string, number of properties in an object, or minimal value for a number or an integer. If we want the minimum to be exclusive we can write the 'min' keyword value as a range-object: `min:{ value: 3, exclusive: true}`, so the instance value has to be more than 3, or to be longer than 3, or to have more than three properties. If we want to define minimum for each separate data type, that is if we validate more than one data type with one schema, we can write an array of range object adding a property 'type' to them. For example:  
 ```javascript
 	min:[{type: 'object', value:5, exclusive: true},  //requires the object instance to have minimum of 6 properties
 		{type:'string', value:3}, //only for string  
 		{value: 2} //for any other type  
 	]
 ```
-A special example would be if you define min like this: `min:{type:string, value:4}`, which would mean that this minimum will be valid only when a type is string and it has 4 or more characters, for other types this minimum will validate as true.
+A special example would be if you define min like this: `min:{type:string, value:4}`, which would mean that this minimum will be applied only when a type is string, for other types this minimum will validate as true.  
 **NOTE:** Float minimum values are only allowed for number type, in any other case THEY WILL BE ROUNDED.
 
 * **max** [e] {number | object:range-object | array[object:range-object]} - Defines a maximum for all data types. Same as **min**, see it for usage details.
@@ -105,10 +102,13 @@ Properties of a condition object are as follows:
 You can nest conditions of course.
 Even though the same result can be achieved with oneOf, anyOf, allOf, not, one must argue that this approach to logic is more elegant.
 
+* **required** {boolean[d03] | array[string][d04]} - Required keyword can be used in two ways. If it is a boolean then it can be used as defined in draft 03, which says that the instance validated must not be undefined. This can be used in more 'meta' manner, for example labeling that the instance is mandatory.
+
+* **notEmpty** [e] {boolean} - 
+
 Authors
 -------
-* Sir Nikola Stamatovic Stamat of [IVARTECH][http://ivartech.com]  
-
+* Sir Nikola Stamatovic Stamat of [IVARTECH][http://ivartech.com]
 In consultation about extensions with:  
 * Sir Marko Maletic Kokos of [IVARTECH][http://ivartech.com]
 
