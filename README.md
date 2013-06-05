@@ -72,11 +72,12 @@ If this property is not provided, it will be assumed that any/all data types are
 
 * **forbidden** [e] {array[any]} - Lists all forbidden values of an instance. Your instance MUST NOT equal to any of forbidden values. See **enum**.
 
-* **min** [e] {number | object:range-object | array[object:range-object]} - Represents a minimum for all data types. It can be just a number and in that form it limits the size of an array or string, number of properties in an object, or minimal value for a number or an integer. If we want the minimum to be exclusive we can write the 'min' keyword value as a range-object: `min:{ value: 3, exclusive: true}`, so the instance value has to be more than 3, or to be longer than 3, or to have more than three properties. If we want to define minimum for each separate data type, that is if we validate more than one data type with one schema, we can write an array of range object adding a property 'type' to them. For example:  
+* **min** [e] {number | object:range-object | array[object:range-object]} - Represents a minimum for all data types. It can be just a number and in that form it limits the size of an array or string, number of properties in an object, or minimal value for a number or an integer. If we want the minimum to be exclusive we can write the 'min' keyword value as a range-object: `'min':{ 'value': 3, 'exclusive': true}`, so the instance value has to be more than 3, or to be longer than 3, or to have more than three properties. If we want to define minimum for each separate data type, that is if we validate more than one data type with one schema, we can write an array of range object adding a property 'type' to them. For example:  
 ```javascript
-	min:[{type: 'object', value:5, exclusive: true},  //requires the object instance to have minimum of 6 properties
-		{type:'string', value:3}, //only for string  
-		{value: 2} //for any other type  
+	'min':[{'type': 'object', 'value':5, 'exclusive': true},  /* requires the object 
+	instance to have minimum of 6 properties */
+		{'type':'string', 'value':3}, //only for string  
+		{'value': 2} //for any other type  
 	]
 ```
 A special example would be if you define min like this: `min:{type:string, value:4}`, which would mean that this minimum will be applied only when a type is string, for other types this minimum will validate as true.  
@@ -87,11 +88,11 @@ A special example would be if you define min like this: `min:{type:string, value
 * **if** [e] {object:condition-object | array[object:condition-object]} - Used to make conditions inside a schema. That means if a schema that is presented as a condition passes then one schema must pass else if it fails some other schema must pass. The value of this keyword must be an object structured as a condition object, or an array of contiditon objects. Structure of a condition object looks like this:
 
 ```javascript
-	if: {
-		not: false,
-		condition: {condition_schema},
-		then: {then_schema},
-		else: {else_schema}
+	'if': {
+		'not': false,
+		'condition': {condition_schema},
+		'then': {then_schema},
+		'else': {else_schema}
 	}
 ```
 Properties of a condition object are as follows:
@@ -102,13 +103,30 @@ Properties of a condition object are as follows:
 You can nest conditions of course.
 Even though the same result can be achieved with oneOf, anyOf, allOf, not, one must argue that this approach to logic is more elegant.
 
-* **required** {boolean[d03] | array[string][d04]} - Required keyword can be used in two ways. If it is a boolean then it can be used as defined in draft 03, which says that the instance validated must not be undefined. This can be used in more 'meta' manner, for example labeling that the instance is mandatory.
+* **required** {boolean[d03] | array[string][d04]} - Required keyword can be used in two ways. If it is a boolean then it can be used as defined in draft 03, which says that the instance validated must not be undefined. This can be used in more 'meta' manner, for example labeling that the instance is mandatory. If the keyword value is array of strings it behaves as described in draft 04, as a list of required/mandatory pattern names. If you desire, you can use the keyword as boolean and provide the required/mandatory properties under **requiredProperities**.
 
-* **notEmpty** [e] {boolean} - 
+* **anyOf** [d04] {array[object:schema]} - One or more provided schemas in an array must validate the instance. Value of this keyword MUST be an array and it MUST have one or more valid schemas.
 
+* **allOf** [d04] {array[object:schema]} - All of provided schemas in an array must validate the instance. Value of this keyword MUST be an array and it MUST have one or more valid schemas.
+
+* **oneOf** [d04] {array[object:schema]} - One and only one of provided schemas in an array must validate the instance. Value of this keyword MUST be an array and it MUST have one or more valid schemas.
+
+* **not** [d04] {array[object:schema]} - Any of provided schemas in an array MUST NOT validate the instance. Value of this keyword MUST be an array and it MUST have one or more valid schemas.
+
+**[2.1] Schema related keywords** - also type independent
+
+* **definitions** {object[object:schema]} -
+
+* **$ref** {string:uri} - Instead of writting a schema again and again you can just referenc already defined one. This keyword and it's value are used to reference self, local or external schema for validation of provided instance. If a schema doesnt have an **id** it will be assigned one via the refeference uri. The following example will give you a brief insight of how you can reference schemas:
+	+ Referencing self `'$ref': '#'` - The scope becomes schema itself without a fragment so the instance is validated against the schema again. **Beware:** of the infinite loop.
+	+ Referencing local schema `'$ref': '#/definitions/positiveInteger'` or for instance `'$ref': '#anyOf/0'` - The scope stays the same and the instance is validated against the schema which path is defined by a fragment. **Note:** fragments can be URL encoded.
+	+ Referencing external schema `'$ref': 'http://example.com/schema'` or `'$ref': 'http://example.com/schema#definitions/positiveInteger'` - the reference can have a scope and/or a fragment. Rootschema is loaded via the scope and instance is validated depending on the fragment. If there is no fragment the instance is validated against the external schema.
+
+* **extends** [n/a] {string:uri} - Not available in this version
 Authors
 -------
 * Sir Nikola Stamatovic Stamat of [IVARTECH][http://ivartech.com]
+
 In consultation about extensions with:  
 * Sir Marko Maletic Kokos of [IVARTECH][http://ivartech.com]
 
