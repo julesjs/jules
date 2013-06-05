@@ -113,8 +113,8 @@ Properties of a condition object are as follows:
 	+ condition {object:schema} - mandatory, MUST be a valid schema
 	+ then {object:schema} - mandatory, MUST be a valid schema
 	+ else {object:schema} - not mandatory, MUST be a valid schema  	  
-You can nest conditions of course.
-Even though the same result can be achieved with oneOf, anyOf, allOf, not, one must argue that this approach to logic is more elegant.
+	You can nest conditions of course.
+	Even though the same result can be achieved with oneOf, anyOf, allOf, not, one must argue that this approach to logic is more elegant.
 
 * **required** {boolean[d03] | array[string][d04]} - Required keyword can be used in two ways. If it is a boolean then it can be used as defined in draft 03, which says that the instance validated must not be undefined. This can be used in more 'meta' manner, for example labeling that the instance is mandatory. If the keyword value is array of strings it behaves as described in draft 04, as a list of required/mandatory pattern names. If you desire, you can use the keyword as boolean and provide the required/mandatory properties under **requiredProperities**.
 
@@ -126,12 +126,35 @@ Even though the same result can be achieved with oneOf, anyOf, allOf, not, one m
 
 * **not** [d04] {array[object:schema]} - Any of provided schemas in an array MUST NOT validate the instance. Value of this keyword MUST be an array and it MUST have one or more valid schemas.  
 
+**[4] Number**
+
+* **minimum** {number} - Defines instance's minimum value if the instance is number. Non exclusive. It MUST be a number (integer or float).
+
+* **exclusiveMinimum** {boolean} - If the minimum is exclusive or not. Default value is false. If this keyword is provided minimum value MUST also be provided, that is, it depends on minimum keyword.
+
+* **maximum** {number} - Defines instance's maximum value if the instance is number. Non exclusive. It MUST be a number (integer or float).
+
+* **exclusiveMaximum** {boolean} - If the maximum is exclusive or not. Default value is false. If this keyword is provided maximum value MUST also be provided, that is, it depends on maximum keyword.
+
+* **numberPattern** [e] or **numberRegex** [e] {string:regex} - Validates a number against a Regular Expression built from a provided string writen in compilance to JavaScript's ECMA-262 standard. You can form the string in two ways `"ab+c"` or `"/ab+c/gi"`. It turns the number to string and tests the RegExp.
+
+* **multipleOf** [d04] or **dividableBy** [d03] {number != 0} - If the number instance is dividable/multiple of provided number. Provided dividableBy number MUST NOT be 0.  
+
+**[5] String**
+
+* **pattern** or **regex** [e] {string:regex} - Validates a string instance against a Regular Expression built from a provided string writen in compilance to JavaScript's ECMA-262 standard. You can form the string in two ways `"ab+c"` or `"/ab+c/gi"`. Regex is just a self explanatory rename.
+
+* **format** [d04] {string:available-format-names} - 
+
+**[6] Array**
+
+**[7] Object**
 
 Authors
 -------
 * Sir Nikola Stamatovic Stamat of [IVARTECH][http://ivartech.com]
 
-In consultation about extensions with:  
+	In consultation about extensions with:  
 * Sir Marko Maletic Kokos of [IVARTECH][http://ivartech.com]
 
 Other

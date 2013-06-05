@@ -404,7 +404,8 @@ jules.validator.string.maxLength = jules.validator.max;
 // ====== [Validators]: Number ====== //
 ivar.namespace('jules.validator.number');
 
-jules.validator.number.regex = jules.validator.string.regex;
+jules.validator.number.numberRegex = jules.validator.string.regex;
+jules.validator.number.numberPattern = jules.validator.string.regex;
 
 jules.validator.number.minimum = jules.validator.min;
 jules.validator.number.maximum = jules.validator.max;
@@ -418,29 +419,11 @@ jules.validator.number.exclusiveMaximum = function(value, i, schema) {
 };
 
 jules.validator.number.dividableBy = function(value, i, schema) {
+	if(schema[i] === 0)
+		return false;
 	return value%schema[i] === 0;
 };
 jules.validator.number.multipleOf = jules.validator.number.dividableBy;
-
-jules.validator.number.positive = function(value) {
-	return value > 0;
-};
-
-jules.validator.number.positiveInteger = function(value) {
-	if(ivar.is(value, 'integer'))
-		return jules.validator.number.positive(value);
-	return false;
-};
-
-jules.validator.number.negative = function(value) {
-	return value < 0;
-};
-
-jules.validator.number.negativeInteger = function(value) {
-	if(ivar.is(value, 'integer'))
-		return jules.validator.number.negative(value);
-	return false;
-};
 
 // ====== [Validators]: Any Type ====== //
 
