@@ -52,8 +52,22 @@ Keywords used to describe the schema and not really used in validation, with som
 * **title** {string} - Give your schema a fancy title, this property is far from mandatory. Make sure your titles are short and meaningful.
 
 * **description** {string} - Describe your schema here, of course this property is far from mandatory too. But if you are going to publish your schema, better put a description so others will have a notion of what is it for.
+
+* **default** {any} - Defines a default value used if instance is undefined or validation  
   
-**[2] All types** - keywords that apply for all data types
+**[2] Schema related keywords** - type independent
+
+* **definitions** {object[object:schema]} -
+
+* **$ref** {string:uri} - Instead of writting a schema again and again you can just reference already defined one. This keyword and it's value are used to reference self, local or external schema for validation of provided instance. If a schema doesnt have an **id** it will be assigned one via the refeference uri. The following example will give you a brief insight of how you can reference schemas:
+	+ Referencing self `'$ref': '#'` - The scope becomes schema itself without a fragment so the instance is validated against the schema again. **Beware:** of the infinite loop.
+	+ Referencing local schema `'$ref': '#/definitions/positiveInteger'` or for instance `'$ref': '#anyOf/0'` - The scope stays the same and the instance is validated against the schema which path is defined by a fragment. **Note:** fragments can be URL encoded.
+	+ Referencing external schema `'$ref': 'http://example.com/schema'` or `'$ref': 'http://example.com/schema#definitions/positiveInteger'` - the reference can have a scope and/or a fragment. Rootschema is loaded via the scope and instance is validated depending on the fragment. If there is no fragment the instance is validated against the external schema.
+
+* **extends** [n/a][d03] {string:uri} - *Not available in this version.* Similar as **$ref** but instead of validating instance againsts the schema, it extends the linked schema with properties of the container schema replacing the values of keywords if they match and then validates the instance against schema combined in such manner.
+  
+**[3] All types** - keywords that apply to all data types  
+
 * **type** or **allow**[e] {string:type-enum | array[string:type-enum]} - Describes which data types are allowed. It can be a STRING or an ARRAY of strings that represent names of data types that can be passed. JSON data types are: 
 	+ null
 	+ boolean
@@ -63,7 +77,6 @@ Keywords used to describe the schema and not really used in validation, with som
 	+ array 
 	+ object
 	+ any | * | empty string
-  
 If this property is not provided, it will be assumed that any/all data types are allowed.
 
 * **disallow** [d03] {string:type-enum | array[string:type-enum]} - Describes which data types are NOT allowed. Can be a string or an array of strings, see **type**.
@@ -111,18 +124,9 @@ Even though the same result can be achieved with oneOf, anyOf, allOf, not, one m
 
 * **oneOf** [d04] {array[object:schema]} - One and only one of provided schemas in an array must validate the instance. Value of this keyword MUST be an array and it MUST have one or more valid schemas.
 
-* **not** [d04] {array[object:schema]} - Any of provided schemas in an array MUST NOT validate the instance. Value of this keyword MUST be an array and it MUST have one or more valid schemas.
+* **not** [d04] {array[object:schema]} - Any of provided schemas in an array MUST NOT validate the instance. Value of this keyword MUST be an array and it MUST have one or more valid schemas.  
 
-**[2.1] Schema related keywords** - also type independent
 
-* **definitions** {object[object:schema]} -
-
-* **$ref** {string:uri} - Instead of writting a schema again and again you can just referenc already defined one. This keyword and it's value are used to reference self, local or external schema for validation of provided instance. If a schema doesnt have an **id** it will be assigned one via the refeference uri. The following example will give you a brief insight of how you can reference schemas:
-	+ Referencing self `'$ref': '#'` - The scope becomes schema itself without a fragment so the instance is validated against the schema again. **Beware:** of the infinite loop.
-	+ Referencing local schema `'$ref': '#/definitions/positiveInteger'` or for instance `'$ref': '#anyOf/0'` - The scope stays the same and the instance is validated against the schema which path is defined by a fragment. **Note:** fragments can be URL encoded.
-	+ Referencing external schema `'$ref': 'http://example.com/schema'` or `'$ref': 'http://example.com/schema#definitions/positiveInteger'` - the reference can have a scope and/or a fragment. Rootschema is loaded via the scope and instance is validated depending on the fragment. If there is no fragment the instance is validated against the external schema.
-
-* **extends** [n/a] {string:uri} - Not available in this version
 Authors
 -------
 * Sir Nikola Stamatovic Stamat of [IVARTECH][http://ivartech.com]
