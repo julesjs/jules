@@ -95,6 +95,8 @@ jules.onFinish = undefined;
 
 jules.validate = function(value, schema, nickcallback) {
 	jules.errors = [];
+	if(ivar.isString(schema))
+		schema = jules.getSchemaByReference(schema);
 	jules.initRootSchema(schema);
 	var res = jules._validate(value, schema);
 	if(jules.onFinish) jules.onFinish(res, value, schema);
@@ -371,31 +373,31 @@ jules.validator.string.regex = function(value, i, schema) {
 	if(!ivar.isString(value))
 		value = value.toString();
 	if(!(regex instanceof RegExp))
-		regex = jules.utils.buildRegExp(schema[i]);	
+		regex = jules.buildRegExp(schema[i]);	
 	return regex.test(value);
 };
 
 jules.validator.string.pattern = jules.validator.string.regex;
 
 jules.formats = {}; //date-time YYYY-MM-DDThh:mm:ssZ, date YYYY-MM-DD, time hh:mm:ss, utc-milisec, regex, color, style, phone E.123, uri, url, email, ipv4, ipv6, host-name
-jules.formats.email = function(val) {
-	return ivar.regex.email.test(val);
+jules.formats.email = function() {
+	return ivar.regex.email;
 };
 
-jules.formats.regex = function(val) {
-	return ivar.regex.regex.test(val);
+jules.formats.regex = function() {
+	return ivar.regex.regex;
 };
 
-jules.formats.time = function(val) {
-	return ivar.regex.time.test(val);
+jules.formats.time = function() {
+	return ivar.regex.time;
 };
 
-jules.formats.uri = function(val) {
-	return ivar.regex.uri.test(val);
+jules.formats.uri = function() {
+	return ivar.regex.uri;
 };
 
 jules.validator.string.format = function(value, i, schema) {
-	return jules.formats[schema[i]](value);
+	return jules.formats[schema[i]].test(value);
 };
 
 jules.validator.string.minLength = jules.validator.min;
@@ -453,7 +455,7 @@ jules.validator._range = function(value, i, schema, exclusive) {
 	}
 	
 	if(ivar.isNumber(mm))
-		mm = jules.utils.buildRangeObj(mm, exclusive);
+		mm = jules.buildRangeObj(mm, exclusive);
 	
 	if (ivar.isObject(mm)) {
 		if(mm.hasOwnProperty('type') && type !== mm.type)
@@ -659,45 +661,59 @@ jules.validator.not = function(value, i, schema) {
 
 //TODO: REFERENCE RESOLVE!!! Needs refactoring in order to work
 //XXX: has _validate, current, refs, getSchema
-jules.validator.$ref = function(value, i, schema) {
+jules.getRootSchema = function(ref, stack) {
+	if(!stack.hasOwnProperty(ref)) {
+		jules.getSchema(ref, function(ref_schema) {
+			if(!ivar.isSet(ref_schema.id))
+				ref_schema.id = ref;
+			else
+				ref = ref_schema.id;
+			jules.initRootSchema(ref_schema);
+		});
+	}
+	return stack[ref];
+};
+
+jules.getLocalSchema = function(ref, root) {
+	if(ref.startsWith('/')) ref = ref.removeFirst();
+	var props = ref.split('/');
+	var schema = root;
+	for(var i = 0; i < props.length; i++) {
+		props[i] = decodeURIComponent(props[i]);
+		if(schema.hasOwnProperty(props[i])) {
+			schema = schema[props[i]];
+		} else {
+			return undefined;
+		}
+	}
+	
+	if(!schema.id)
+		schema.id = ref;
+		
+	return schema;
+};
+
+jules.getSchemaByReference = function(ref) {
 	//TODO: $ref: '#', referencing itself
-	var ref = schema[i];
+	var schema = null;
 	var parts = ref.split('#');
 	if(ivar.isSet(parts[0]) && parts[0].length > 0) {
-		if(!jules.refs.hasOwnProperty(parts[0])) {
-			jules.getSchema(parts[0], function(ref_schema) {
-				if(!ivar.isSet(ref_schema.id))
-					ref_schema.id = parts[0];
-				else
-					parts[0] = ref_schema.id;
-				jules.initRootSchema(ref_schema);
-			});
-		}
-		schema = jules.refs[parts[0]];
+		schema = jules.getRootSchema(parts[0], jules.refs);
 	}
 	
 	if(ivar.isSet(parts[1]) && parts[1].length > 0) {
-		if(parts[1].startsWith('/')) parts[1] = parts[1].removeFirst();
-		var props = parts[1].split('/');
-		schema = jules.current;
-		for(var i = 0; i < props.length; i++) {
-			props[i] = decodeURIComponent(props[i]);
-			if(schema.hasOwnProperty(props[i])) {
-				schema = schema[props[i]];
-			} else {
-				jules.error('Invalid reference!');
-				return false;
-			}
-		}
-		
-		if(!schema.id)
-			schema.id = ref;
+		schema = jules.getLocalSchema(parts[1], jules.current);
 	}
 	
 	//TODO:
 	if(parts[0].length === 0 && parts[1].length === 0)
 		schema = jules.current;
-	return jules._validate(value, schema);
+		
+	return schema;
+};
+
+jules.validator.$ref = function(value, i, schema) {
+	return jules._validate(value, jules.getSchemaByReference(schema[i]));
 };
 
 jules.validator['extends'] = function (value, i, schema) {
@@ -705,17 +721,19 @@ jules.validator['extends'] = function (value, i, schema) {
 	return true;
 };
 
-jules.validateSchema = function(schema) {
-	if(schema.hasOwnProperty('$schema'))
-		return jules._validate(schema, schema.$schema, false);
-	return false;
+jules.validateSchema = function(schema, metaschema) {
+	if(!metaschema && schema.hasOwnProperty('$schema'))
+		metaschema = jules.getSchemaByReference(schema.$schema);
+	if(metaschema && ivar.isString(metaschema))
+		metaschema = jules.getSchemaByReference(metaschema);
+		
+	return jules._validate(schema, metaschema, false);
 };
 
 
 // ====== Some utils... ====== //
 
-ivar.namespace('jules.utils');
-jules.utils.buildRangeObj = function(val, exclusive) {
+jules.buildRangeObj = function(val, exclusive) {
 	if(ivar.isString(val))
 		val = parseFloat(val);
 	if(!ivar.isSet(exclusive))
@@ -723,7 +741,7 @@ jules.utils.buildRangeObj = function(val, exclusive) {
 	return ivar.isNumber(val)?{value:val, exclusive: exclusive}:val;
 };
 
-jules.utils.buildRegExp = function(val) {
+jules.buildRegExp = function(val) {
 	if(!ivar.isString(val))
 		val = val.toString();
 	var re = val.toRegExp();
@@ -738,29 +756,24 @@ jules.error = function(msg) {
 	ivar.error(heading + msg);
 };
 
-jules.getSchema = function(schema, callback) {
-    var request = new XMLHttpRequest(); 
-    request.onload = function(e) {
-    	var resp = request.responseText;
-		if (request.status == 200) {
+jules.getSchema = function(uri, callback) {
+	var resp = undefined;
+	ivar.request({uri: uri, async:false}, function(response) {
+		if(ivar.isSet(response)) {
 			try {
-				resp = JSON.parse(request.responseText);
+				resp = JSON.parse(response);
 			} catch(e) {
 				jules.error('Invalid Schema JSON syntax - ' + e);
-				resp = undefined;
 			}
 		} else {
 			jules.error('Reference not accessible');
-			resp = undefined;
 		}
-		
-		callback(resp);
-	}
-    request.open('GET', schema, false);
-    request.send();
+	});
+	callback(resp);
 };
 
+
 //TEST
-ivar.echo(jules.validate([1,2,3], schema));
+ivar.echo(jules.validate('sfsf5', 'https://dl.dropboxusercontent.com/u/2808807/test.json'));
 
 

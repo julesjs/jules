@@ -342,6 +342,25 @@ Function.prototype.inherit = function(classes) {
 	this.prototype['__super__'] = _classes;
 };
 
+ivar.request = function(opt, callback) {
+	var defs = {
+		method: 'GET',
+		async: true
+	};
+	
+	if(ivar.isSet(opt))
+		ivar.extend(defs, opt);
+	
+    var request = new XMLHttpRequest(); 
+    request.onload = function(e) {
+    	var resp = request.responseText;
+		if (request.status != 200) resp = undefined;		
+		if(callback) callback(resp);
+	}
+    request.open(defs.method, defs.uri, defs.async);
+    request.send(defs.messages);
+};
+
 ivar.eachArg = function(args, fn) {
 	var i = 0;
 	while (args.hasOwnProperty(i)) {

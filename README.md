@@ -99,7 +99,6 @@ A special example would be if you define min like this: `min:{type:string, value
 * **max** [e] {number | object:range-object | array[object:range-object]} - Defines a maximum for all data types. Same as **min**, see it for usage details.
 
 * **if** [e] {object:condition-object | array[object:condition-object]} - Used to make conditions inside a schema. That means if a schema that is presented as a condition passes then one schema must pass else if it fails some other schema must pass. The value of this keyword must be an object structured as a condition object, or an array of contiditon objects. Structure of a condition object looks like this:
-
 ```javascript
 	'if': {
 		'not': false,
@@ -108,12 +107,12 @@ A special example would be if you define min like this: `min:{type:string, value
 		'else': {else_schema}
 	}
 ```
-Properties of a condition object are as follows:
+	Properties of a condition object are as follows:
 	+ not {boolean} - not mandatory, defines the negation of condition
 	+ condition {object:schema} - mandatory, MUST be a valid schema
 	+ then {object:schema} - mandatory, MUST be a valid schema
-	+ else {object:schema} - not mandatory, MUST be a valid schema  	  
-	You can nest conditions of course.
+	+ else {object:schema} - not mandatory, MUST be a valid schema   
+	You can nest conditions of course.  
 	Even though the same result can be achieved with oneOf, anyOf, allOf, not, one must argue that this approach to logic is more elegant.
 
 * **required** {boolean[d03] | array[string][d04]} - Required keyword can be used in two ways. If it is a boolean then it can be used as defined in draft 03, which says that the instance validated must not be undefined. This can be used in more 'meta' manner, for example labeling that the instance is mandatory. If the keyword value is array of strings it behaves as described in draft 04, as a list of required/mandatory pattern names. If you desire, you can use the keyword as boolean and provide the required/mandatory properties under **requiredProperities**.
@@ -144,9 +143,15 @@ Properties of a condition object are as follows:
 
 * **pattern** or **regex** [e] {string:regex} - Validates a string instance against a Regular Expression built from a provided string writen in compilance to JavaScript's ECMA-262 standard. You can form the string in two ways `"ab+c"` or `"/ab+c/gi"`. Regex is just a self explanatory rename.
 
-* **format** [d04] {string:available-format-names} - 
+* **format** [d04] {string:available-format-names} - Values of this keyword are predifined names of common regular expressions. Currently you can use one of the available at the time: `uri, regex, time, email`. More expressions are soon to come, nevertheless you can extend the set yourself. For ways how to do it, see **Extending example** chapter.
+
+* **minLength** {integer} - Minimum number of characters. Must be a positive integer. Default value is 0.
+
+* **maxLength** {integer} - Maximum number of characters. Must be a positive integer.  
 
 **[6] Array**
+
+* **uniqueItems** or **unique**
 
 **[7] Object**
 
@@ -160,3 +165,4 @@ Authors
 Other
 -----
 Name comes from a Quentin Tarantino's movie "Pulp Finction" character named Jules, portrayed by Samuel L. Jackson. The reason is the famous quote: *'There's a passage I got memorized. Ezekiel 25:17. "The path of the righteous man is beset on all sides by the inequities of the selfish and the tyranny of evil men. Blessed is he who, in the name of charity and good will, shepherds the weak through the valley of the darkness, for he is truly his brother's keeper and the finder of lost children. And I will strike down upon thee with great vengeance and furious anger those who attempt to poison and destroy My brothers. And you will know I am the Lord when I lay My vengeance upon you."'*
+
