@@ -111,7 +111,8 @@ A special example would be if you define min like this: `min:{type:string, value
 	+ not {boolean} - not mandatory, defines the negation of condition
 	+ condition {object:schema} - mandatory, MUST be a valid schema
 	+ then {object:schema} - mandatory, MUST be a valid schema
-	+ else {object:schema} - not mandatory, MUST be a valid schema   
+	+ else {object:schema} - not mandatory, MUST be a valid schema  
+	  
 	You can nest conditions of course.  
 	Even though the same result can be achieved with oneOf, anyOf, allOf, not, one must argue that this approach to logic is more elegant.
 
@@ -145,15 +146,25 @@ A special example would be if you define min like this: `min:{type:string, value
 
 * **format** [d04] {string:available-format-names} - Values of this keyword are predifined names of common regular expressions. Currently you can use one of the available at the time: `uri, regex, time, email`. More expressions are soon to come, nevertheless you can extend the set yourself. For ways how to do it, see **Extending example** chapter.
 
-* **minLength** {integer} - Minimum number of characters. Must be a positive integer. Default value is 0.
+* **minLength** {+integer} - Minimum number of characters. Must be a positive integer. Default value is 0.
 
-* **maxLength** {integer} - Maximum number of characters. Must be a positive integer.  
+* **maxLength** {+integer} - Maximum number of characters. Must be a positive integer.  
 
 **[6] Array**
 
-* **uniqueItems** or **unique**
+* **uniqueItems** or **unique** [e] {boolean} -
+* **items** {object:schema | array[object:schema]} - 
+* **additionalItems** {boolean} -
+* **minItems** {+integer} -
+* **maxItems** {+integer} -
 
 **[7] Object**
+
+* **required** or **requiredProperies** {array[string:property-names]}
+* **properties** {object[object:schema]}
+* **patternProperties** {object[object:schema]}
+* **additionalProperties** {boolean | object[object:schema]}
+* **dependencies** {object[array[string:property-names]]}
 
 Authors
 -------
@@ -165,4 +176,5 @@ Authors
 Other
 -----
 Name comes from a Quentin Tarantino's movie "Pulp Finction" character named Jules, portrayed by Samuel L. Jackson. The reason is the famous quote: *'There's a passage I got memorized. Ezekiel 25:17. "The path of the righteous man is beset on all sides by the inequities of the selfish and the tyranny of evil men. Blessed is he who, in the name of charity and good will, shepherds the weak through the valley of the darkness, for he is truly his brother's keeper and the finder of lost children. And I will strike down upon thee with great vengeance and furious anger those who attempt to poison and destroy My brothers. And you will know I am the Lord when I lay My vengeance upon you."'*
+
 

@@ -87,7 +87,7 @@ jules.errors = [];
 jules.error_messages = {};
 jules.error_messages['type'] = '{{schema_id}} Invalid type. Type of data should be {{key_val}}';
 jules.refs = {};
-jules.current = null;
+jules.current_scope = null;
 
 jules.onEachField = undefined;
 jules.onEachSchema = undefined;
@@ -97,21 +97,21 @@ jules.validate = function(value, schema, nickcallback) {
 	jules.errors = [];
 	if(ivar.isString(schema))
 		schema = jules.getSchemaByReference(schema);
-	jules.initRootSchema(schema);
+	jules.initScope(schema);
 	var res = jules._validate(value, schema);
+	if(nickcallback) jules.onFinish = nickcallback; //This is how you remind me... Or is it Someday? Go suck somewhere else...
 	if(jules.onFinish) jules.onFinish(res, value, schema);
-	if(nickcallback) nickcallback(); //This is how you remind me... Or is it Someday? Go suck somewhere else...
 	return res;
 };
 
-jules.initRootSchema = function(schema) {
+jules.initScope = function(schema) {
 	if(!schema.id)
 		schema.id = 'schema:'+ivar.crc32(JSON.stringify(schema));
 	
 	if(!ivar.isSet(jules.refs[schema.id]))
 		jules.refs[schema.id] = schema;
 	
-	jules.current = jules.refs[schema.id];
+	jules.current_scope = jules.refs[schema.id];
 		
 	return jules.refs[schema.id];
 };
@@ -125,8 +125,8 @@ jules._validate = function(value, schema, aggregate_errors) {
 	var errors = [];
 	
 	for(var i in schema) {
-		if(jules.current.id !== schema.id && jules.refs.hasOwnProperty(schema.id)) {
-			jules.current = jules.refs[schema.id];
+		if(jules.current_scope.id !== schema.id && jules.refs.hasOwnProperty(schema.id)) {
+			jules.current_scope = jules.refs[schema.id];
 		}
 		var type = ivar.whatis(value);
 		if(type === 'integer' || type === 'float')
@@ -140,7 +140,7 @@ jules._validate = function(value, schema, aggregate_errors) {
 			if(jules.onEachField) jules.onEachField(value, i, schema, valid);
 			continue;
 		}
-		//ivar.echo(schema.id+' - '+i+': '+valid);
+		ivar.echo(schema.id+' - '+i+': '+valid);
 		if(jules.onEachField) jules.onEachField(i, value, schema, valid);
 		if(!valid) {
 			errors.push(jules.invalid(i, value, schema));
@@ -661,23 +661,23 @@ jules.validator.not = function(value, i, schema) {
 
 //TODO: REFERENCE RESOLVE!!! Needs refactoring in order to work
 //XXX: has _validate, current, refs, getSchema
-jules.getRootSchema = function(ref, stack) {
+jules.getScope = function(ref, stack) {
 	if(!stack.hasOwnProperty(ref)) {
 		jules.getSchema(ref, function(ref_schema) {
 			if(!ivar.isSet(ref_schema.id))
 				ref_schema.id = ref;
 			else
 				ref = ref_schema.id;
-			jules.initRootSchema(ref_schema);
+			jules.initScope(ref_schema);
 		});
 	}
 	return stack[ref];
 };
 
-jules.getLocalSchema = function(ref, root) {
+jules.getFragment = function(ref, scope) {
 	if(ref.startsWith('/')) ref = ref.removeFirst();
 	var props = ref.split('/');
-	var schema = root;
+	var schema = scope;
 	for(var i = 0; i < props.length; i++) {
 		props[i] = decodeURIComponent(props[i]);
 		if(schema.hasOwnProperty(props[i])) {
@@ -698,16 +698,16 @@ jules.getSchemaByReference = function(ref) {
 	var schema = null;
 	var parts = ref.split('#');
 	if(ivar.isSet(parts[0]) && parts[0].length > 0) {
-		schema = jules.getRootSchema(parts[0], jules.refs);
+		schema = jules.getScope(parts[0], jules.refs);
 	}
 	
 	if(ivar.isSet(parts[1]) && parts[1].length > 0) {
-		schema = jules.getLocalSchema(parts[1], jules.current);
+		schema = jules.getFragment(parts[1], jules.current_scope);
 	}
 	
 	//TODO:
 	if(parts[0].length === 0 && parts[1].length === 0)
-		schema = jules.current;
+		schema = jules.current_scope;
 		
 	return schema;
 };
