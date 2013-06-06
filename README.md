@@ -1,6 +1,6 @@
-JULES
+![JULES - JavaScript JSON Schema Validator](https://dl.dropboxusercontent.com/u/2808807/img/jules-logo.png)
 =====
-**JavaScript JSON Schema Validator** (yes... another one...)   
+**JULES - JavaScript JSON Schema Validator** (yes... another one...)   
 
 * [d04] [JSON Schema draft 04][http://json-schema.org/latest/json-schema-core.html] (compatible) - [(schema^)][http://json-schema.org/draft-04/schema]
 * [d03] [JSON Schema draft 03][http://tools.ietf.org/html/draft-zyp-json-schema-03] (partially compatible, extends is an exception) - [(schema^)][http://json-schema.org/draft-03/schema]
@@ -10,7 +10,10 @@ JULES
 About
 -----------
 An easily extensible JavaScript JSON validator written in declarative style which enabled easy extending and pay as you go execution, minimizing the number of functions executed and conditions passed while traversing through schema.   
-This way it is an open platform for experimenting with validation rules and enabling easier creation of a future scheme for all of us to benifit from.
+This way it is an open platform for experimenting with validation rules and enabling easier creation of a future scheme for all of us to benifit from.  
+One **Bad Motherfucker**...  
+  
+Note that this is a client side schema validator, and not a Node.js module. Well not yet... Made exclusively for validating form fields and JSON requests.
 
 Usage example
 -------------
@@ -26,10 +29,19 @@ Warnings
 
 * Be careful while using **$ref**, you can fall into an infinite loop.
 
+To Do
+-----
+- [ ] Refactor the code (this will enable all other tasks to be completed with ease)
+- [ ] Better errors. Point out whitch part of the schema failed the validation.
+- [ ] Better $ref resolving, forbid the infinite loop
+- [ ] Comment the code! The thing you hate the most... but dont come back whining who's code is this after a year...
+- [ ] Hyper Schema
+- [ ] Node.js package
+
 Compatibility
 -------------
-The validator can validate schema defined by draft 04 and/or 03. That means that you will be able to mix different schemas, and you can extend the validator to support earlier or drafts yet to come, or even make custom keywords and rules for them or just renames. In a form of an experiment some custom keywords were added in order to improve validation flexibility.  
-You might find them unethical, and I am very well aware that we should support the draft in it's transition to a standard but fresh ideas in an early stadium are good too. I am also aware that conditions can be done using oneOf, anyOf, allOf and/or not, but I found it more elegant this way. Schema for supported extension is yet to be written but you can start using the additional keywords described in the next chapter.
+The validator can validate schema defined by draft 04 and/or 03. That means that you will be able to mix different schemas, and you can extend the validator to support earlier or drafts yet to come, or even make custom keywords and rules for them or just renames. In a form of an experiment some custom keywords were added witch you might find unethical. But don't forget that you can easily chane the code to fit your liking.  
+Schema for supported extension is yet to be written but you can start using the additional keywords described in the next chapter.
 
 Supported schema keywords
 -------------------------
@@ -76,8 +88,9 @@ Keywords used to describe the schema and not really used in validation, with som
 	+ string
 	+ array 
 	+ object
-	+ any | * | empty string
-If this property is not provided, it will be assumed that any/all data types are allowed.
+	+ any | * | empty string  
+	  
+	If this property is not provided, it will be assumed that any/all data types are allowed.
 
 * **disallow** [d03] {string:type-enum | array[string:type-enum]} - Describes which data types are NOT allowed. Can be a string or an array of strings, see **type**.
 
@@ -146,7 +159,7 @@ A special example would be if you define min like this: `min:{type:string, value
 
 * **format** [d04] {string:available-format-names} - Values of this keyword are predifined names of common regular expressions. Currently you can use one of the available at the time: `uri, regex, time, email`. More expressions are soon to come, nevertheless you can extend the set yourself. For ways how to do it, see **Extending example** chapter.
 
-* **minLength** {+integer} - Minimum number of characters. Must be a positive integer. Default value is 0.
+* **minLength** {+integer=0} - Minimum number of characters. Must be a positive integer. Default value is 0.
 
 * **maxLength** {+integer} - Maximum number of characters. Must be a positive integer.  
 
@@ -155,26 +168,52 @@ A special example would be if you define min like this: `min:{type:string, value
 * **uniqueItems** or **unique** [e] {boolean} -
 * **items** {object:schema | array[object:schema]} - 
 * **additionalItems** {boolean} -
-* **minItems** {+integer} -
+* **minItems** {+integer=0} -
 * **maxItems** {+integer} -
 
 **[7] Object**
 
-* **required** or **requiredProperies** {array[string:property-names]}
-* **properties** {object[object:schema]}
-* **patternProperties** {object[object:schema]}
-* **additionalProperties** {boolean | object[object:schema]}
-* **dependencies** {object[array[string:property-names]]}
+* **required** [d04] or **requiredProperies** [e] {array[string:property-names]} - List of required property names in an array. This value MUST be an array. If you want to use required as noted in draft 03, to label the instance as mandatory, use requredProperties instead, to note required properties of course.
+
+* **properties** {object[object:schema]} - Object that contains schemas under properties named as expected properties of the instance object. Each property of the instance objet is validated against the correct schema. **NOTE:** You can use regular expressions as property names in this section of a schema, labeling them between '/' and adding the regex options at the end like `"/ab+c/gi"`. This might be removed, cause it might piss you off, if you use paths as a property name. But when i come to think of it, there is no reason it shouldn't work :) **Be warned!**
+ 
+* **patternProperties** {object[object:schema]} - 
+* **additionalProperties** {boolean | object[object:schema]} - 
+* **dependencies** {object[array[string:property-names]]} - 
+* **minProperties** {+integer=0} - 
+* **maxProperties** {+integer} -
 
 Authors
 -------
+![ivartech.com](https://dl.dropboxusercontent.com/u/2808807/img/ivartech-watermark.png)
+
 * Sir Nikola Stamatovic Stamat of [IVARTECH][http://ivartech.com]
 
 	In consultation about extensions with:  
 * Sir Marko Maletic Kokos of [IVARTECH][http://ivartech.com]
 
-Other
------
-Name comes from a Quentin Tarantino's movie "Pulp Finction" character named Jules, portrayed by Samuel L. Jackson. The reason is the famous quote: *'There's a passage I got memorized. Ezekiel 25:17. "The path of the righteous man is beset on all sides by the inequities of the selfish and the tyranny of evil men. Blessed is he who, in the name of charity and good will, shepherds the weak through the valley of the darkness, for he is truly his brother's keeper and the finder of lost children. And I will strike down upon thee with great vengeance and furious anger those who attempt to poison and destroy My brothers. And you will know I am the Lord when I lay My vengeance upon you."'*
+Artwork: Silhouette taken from http://la-feuille-verte.tumblr.com/post/34228956696/pulp-fiction-silhouette and font from http://www.dafont.com/pulp-fiction-m54.font. Thanks!
 
+Licence
+-------
+**Motherfuckin' MIT** protects our ass...
 
+`Copyright (C) 2013. Nikola Stamatovic Stamat < stamat@ivartech.com > ivartech.com  
+  
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:  
+  
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.  
+  
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.`  
+
+Curiosities
+-----------
+Since all of the simple and selfexplanatory names were taken, like JSV or schema.js, or whatever... I wanted to name it JVlS, and then said to myself: "Chill that fuckin' bitch out!" So in that manner:   
+  
+Name comes from a Quentin Tarantino's movie "Pulp Finction" character named Jules Winnfield, portrayed by Samuel L. Jackson. The reason is the famous quote: *'There's a passage I got memorized. Ezekiel 25:17. "The path of the righteous man is beset on all sides by the inequities of the selfish and the tyranny of evil men. Blessed is he who, in the name of charity and good will, shepherds the weak through the valley of the darkness, for he is truly his brother's keeper and the finder of lost children. And I will strike down upon thee with great vengeance and furious anger those who attempt to poison and destroy My brothers. And you will know I am the Lord when I lay My vengeance upon you."'*
+
+*Vincent*: And you know what they call a... a... a Quarter Pounder with Cheese in Paris?  
+*Jules*: They don't call it a Quarter Pounder with cheese?  
+*Vincent*: No man, they got the metric system. They wouldn't know what the fuck a Quarter Pounder is.  
+*Jules*: Then what do they call it?  
+*Vincent*: They call it a Royale with cheese.  

@@ -3,8 +3,9 @@
  * JULES - (another) JavaScript Schema Validator
  * Ezekiel 25:17
  *
- * @author Nikola Stamatovic Stamat 
+ * @author Nikola Stamatovic Stamat < stamat@ivartech.com >
  * @copyright IVARTECH < http://ivartech.com >
+ * @licence MIT
  * @since May 2013
  */
  
