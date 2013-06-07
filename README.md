@@ -31,6 +31,7 @@ Warnings
 
 To Do
 -----
+- [ ] Schema extends
 - [ ] Refactor the code (this will enable all other tasks to be completed with ease)
 - [ ] Better errors. Point out whitch part of the schema failed the validation.
 - [ ] Better $ref resolving, forbid the infinite loop
@@ -129,7 +130,7 @@ A special example would be if you define min like this: `min:{type:string, value
 	You can nest conditions of course.  
 	Even though the same result can be achieved with oneOf, anyOf, allOf, not, one must argue that this approach to logic is more elegant.
 
-* **required** {boolean[d03] | array[string][d04]} - Required keyword can be used in two ways. If it is a boolean then it can be used as defined in draft 03, which says that the instance validated must not be undefined. This can be used in more 'meta' manner, for example labeling that the instance is mandatory. If the keyword value is array of strings it behaves as described in draft 04, as a list of required/mandatory pattern names. If you desire, you can use the keyword as boolean and provide the required/mandatory properties under **requiredProperities**.
+* **required** {boolean[d03] | array[string][d04]} - Required keyword can be used in two ways. If it is a boolean then it can be used as defined in draft 03, which says that the instance validated must not be undefined. This can be used in more 'meta' manner, for example labeling that the instance is mandatory. If the keyword value is array of strings it behaves as described in draft 04, as a list of required/mandatory pattern names. If you desire, you can use the keyword as boolean and provide the required/mandatory properties under **requiredProperties**.
 
 * **anyOf** [d04] {array[object:schema]} - One or more provided schemas in an array must validate the instance. Value of this keyword MUST be an array and it MUST have one or more valid schemas.
 
@@ -173,12 +174,14 @@ A special example would be if you define min like this: `min:{type:string, value
 
 **[7] Object**
 
-* **required** [d04] or **requiredProperies** [e] {array[string:property-names]} - List of required property names in an array. This value MUST be an array. If you want to use required as noted in draft 03, to label the instance as mandatory, use requredProperties instead, to note required properties of course.
+* **required** [d04] or **requiredProperies** [e] {array[string:property-names]} - List of required property names in an array. This value MUST be an array. If you want to use required as noted in draft 03, to label the instance as mandatory, use requredProperties to note required properties of course.
 
-* **properties** {object[object:schema]} - Object that contains schemas under properties named as expected properties of the instance object. Each property of the instance objet is validated against the correct schema. **NOTE:** You can use regular expressions as property names in this section of a schema, labeling them between '/' and adding the regex options at the end like `"/ab+c/gi"`. This might be removed, cause it might piss you off, if you use paths as a property name. But when i come to think of it, there is no reason it shouldn't work :) **Be warned!**
+* **properties** {object[object:schema]} - Object that contains schemas under properties named as expected properties of the instance object. Each property of the instance objet is validated against the correct schema. **NOTE:** You can use regular expressions as property names in this section of a schema, labeling them between '/' and adding the regex options at the end like `"/ab+c/gi"`. This might be removed, cause it might piss you off, if you use paths as a property name. But when i come to think of it, there is no reason it shouldn't work, except when you same your paths /something/gi, something/ig... :) **Be warned!**
  
-* **patternProperties** {object[object:schema]} - 
-* **additionalProperties** {boolean | object[object:schema]} - 
+* **patternProperties** {object[object:schema]} - Use regular expression strings to select properties of an object instance and test them against correct schemas. All properties of an instance that match one schema formed property under this keyword will be tested against the supplied schema. Regular expression properties can be written in two ways `"ab+c"` or with properties `"/ab+c/gi"`.
+
+* **additionalProperties** {boolean | object:schema} - If this schema property is false then all of instance object's properties must be covered with schemas defined in properties and patternProperties segment of the schema. If there are any that are not covered the validation fails. In other words only properties defined in properties and patternProperties are allowed. The keyword can also be one schema for all other additional properies.
+
 * **dependencies** {object[array[string:property-names]]} - 
 * **minProperties** {+integer=0} - 
 * **maxProperties** {+integer} -

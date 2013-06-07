@@ -11,79 +11,10 @@
  
  
 //TODO: hyper schema
-
-var schema = {
-		'id': 'http://example.com/test-schema#',
-		"$schema": "https://dl.dropboxusercontent.com/u/2808807/schema#",
-		'strict':true,
-		'type': ['object','array'],
-		//'disallow': ['integer', 'string'], //disallowed types, can be array
-		'requiredProperties': ['lol'],
-		//'default': null,
-		'definitions': {
-			'test': {
-				min: 0
-			},
-			'test1': {
-				type: 'array'
-			},
-		},
-		//'min': {
-		//	value: 0,
-		//	exclusive: false
-		//},
-		//'max': {
-		//	value: 30,
-		//	exclusive: false
-		//},
-		min: [{type: 'object', value: 2, exclusive: true}, {type: 'array', value: 3, exclusive: false}],
-		max: [{type: 'object', value: 4, exclusive: true}],
-		
-		minProperties: 1,
-		maxProperties: 4,
-		
-		properties: {
-			'/lo/': {$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#/definitions/test'},
-			'omg': {},
-			'rofl': {}
-		},
-		
-		"enum": ["123","1234",["123f45"], [1,2,3],{lol:6, rofl:2, omg:4}, {lol:1, rofl:2}],
-		
-		additionalProperties: false,
-		
-		//'items':[{type: 'int', min:1},{type: 'int', min:1},{type: 'string'}],
-		
-		//'additionalItems': false,
-		
-		//'unique': true, //if array items must be unique 	//uniqueProperties: []  //not Unique ITEMS!!! unique items dont have sense
-		//allOf: [{id: 'allof',$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#'}],
-		//not: [{id: 'not',$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#/definitions/test1'}],
-		'if': [{
-			condition: {type:'object'},
-			then: {dependencies: {'lol':['omg','rofl']}},
-			'else': {}
-		}, {
-			not: true,
-			condition: {type:'array'},
-			then: {max:[{type: 'object', value: 4, exclusive: true}]},
-			'else': {}
-		}]
-		//'regex': 'f', //sting,int,float
-		//'format': 'email', //can be array
-		
-		//'forbidden': ['stamatron@gmail.com'] // true for object id no properties allowed
-
-		//---- other ---//
-		//'only': ['lol6zors', 6, 4], //true for object if you want selected properties in properties property of schema to be only ones allowed
-		//'dividableBy': 3 //number
-		//items: [{schema}] Schemas for an item!
-		//properties: {propertyName:schema...} //object
-}
+//TODO: extends
 
 var jules = {};
-jules.aggregate_errors = false;
-//jules.validate_schema = true;
+jules.aggregate_errors = true;
 jules.errors = [];
 jules.error_messages = {};
 jules.error_messages['type'] = '{{schema_id}} Invalid type. Type of data should be {{key_val}}';
@@ -259,48 +190,41 @@ jules.validator.object.properties = function(value, i, schema, bool) {
 jules.validator.object.additionalProperties = function(value, i, schema) {
 	var prop = schema[i];
 	if (ivar.isObject(prop)) {
-		return jules.validator.object.properties(value, i, schema);
+		return jules._validateAdditionalProperties(value, i, schema);
 	} else {
 		if (prop === false) {
-			return jules.validator._noAdditionalProperties(value, i, schema);
+			return !jules._getAdditionalProperties(value, i, schema).length > 0;
 		}
 	}
 	return true;
 };
 
-jules.validator._noAdditionalProperties = function(value, i, schema) {
-	var prop = schema[i];
+jules._validateAdditionalProperties = function(value, i, schema) {
+	var arr = jules._getAdditionalProperties(value, i, schema);
+	var additional_schema = schema[i];
+	for(var i = 0; i < arr.length; i++) {
+		if(value.hasOwnProperty(arr[i]) && !jules._validate(value[arr[i]], additional_schema))
+			return false;
+	}
+	return true;
+};
+
+jules._getAdditionalProperties = function(value, i, schema) {
 	var arr = ivar.getProperties(value);
-	
-	var removePatternProperty = function(prop) {
-		var re = prop.toRegExp();
-		for(var i = 0; i < arr.length; i++) {
-			if(re.test(arr[i]))
-				arr.remove(i);
-		}
-	};
 	
 	if(schema.hasOwnProperty('properties')) {
 		for(var i in schema.properties) {
-			if (ivar.regex.regex.test(i)) {
-				removePatternProperty(i);
-			} else {
-				for(var j = 0; j < arr.length; j++) {
-					var id = arr.find(i);
-					if(id > -1)
-						arr.remove(id);
-				}
-			}
+			arr.remove(i);
 		}
 	}
 	
 	if(schema.hasOwnProperty('patternProperties')) {
 		for(var i in schema.patternProperties) {
-			removePatternProperty(i);
+			arr.remove(i);
 		}
 	}
 	
-	return !arr.length > 0;
+	return arr;
 };
 
 jules.validator._propertyRange = function(obj, del) {
@@ -772,9 +696,3 @@ jules.getSchema = function(uri, callback) {
 	});
 	callback(resp);
 };
-
-
-//TEST
-ivar.echo(jules.validate('sfsf5', 'https://dl.dropboxusercontent.com/u/2808807/test.json'));
-
-

@@ -24,10 +24,10 @@ ivar._private.libname = 'ivar';
 
 ivar._global = this;
 
-ivar._private.output; //define debug output function, print your output somewhere else...
+ivar._private.output = undefined; //define debug output function, print your output somewhere else...
 
 ivar.regex = {};
-ivar.regex.regex = /^\/(.*)\/([igmy]{0,4})$/;
+ivar.regex.regex = /^\/(.*)\/(?:[igm]{0,3})$/;
 ivar.regex.email = /^[a-z0-9\._\-]+@[a-z\.\-]+\.[a-z]{2,4}$/;
 
 //FUCK THIS SHIT!
@@ -99,7 +99,7 @@ Array.prototype.each = function(fn, reversed) {
 
 String.prototype.each = Array.prototype.each;
 
-//TODO: test == ===, Conditions for Date and Object, recursion for array value
+//TODO: test == ===, Conditions for Object, recursion for array value
 Array.prototype.equal = function(arr) {
 	var self = this;
 	if (self === arr)
@@ -113,12 +113,55 @@ Array.prototype.equal = function(arr) {
 	return true;
 };
 
-//TODO: remove segment of an array
 Array.prototype.remove = function(id) {
-	return this.splice(id, 1);
+	if (ivar.isNumber(id))
+		return this.splice(id, 1);
+	if (ivar.isString(id)) {
+		if (!ivar.regex.regex.test(id)) {
+			var id = this.find(id);
+			if (id > -1)
+				return this.splice(id, 1);
+		} else {
+			return ivar.patternRemove(this, id);
+		}
+	}
+	return false;
 };
 
-//TODO: insert array into array
+ivar.patternRemove = function(obj, re) {
+	if (ivar.isString(re))
+		re = re.toRegExp();
+	if (ivar.isArray(obj)) {
+		for(var i = 0; i < obj.length; i++) {
+			if(re.test(obj[i]))
+				obj.remove(i);
+		}
+	} else if (typeof obj === 'object') {
+		for(var i in obj) {
+			if(re.test(i)) {
+				delete obj[i];
+			}
+		}
+	}
+	return obj;
+};
+
+ivar.getAdditionalProperties = function(obj, properties, patternProperties) {
+	var arr = ivar.getProperties(value);
+	
+	if(properties && ivar.isArray(properties))
+	for(var i = 0; i < properties.length; i++) {
+		arr.remove(properties[i]);
+	}
+	
+	if(properties && ivar.isArray(patternProperties))
+	for(var i = 0; i < patternProperties.length; i++) {
+		arr.remove(patternProperties[i]);
+	}
+	
+	return arr;
+};
+
 Array.prototype.insert = function(id, value) {
 	return this.splice(id, 0, value);
 };
@@ -131,6 +174,14 @@ Array.prototype.shuffle = function() {
 		this.splice(id, 1);
 	}
     return res;
+};
+
+Array.prototype.toObject = function() {
+	var res = {};
+	for(var i = 0; i < this.length; i++) {
+		res[i] = this[i];
+	}
+	return res;
 };
 
 ivar.toMapKey = function(value) {
@@ -372,7 +423,7 @@ ivar.eachArg = function(args, fn) {
 };
 
 ivar.getProperties = function(obj, re) {
-	if (!re) {
+	if (!re && !ivar.isString(re)) {
 		var props = [];
 		for(var i in obj) {
 			props.push(i);
@@ -740,7 +791,12 @@ ivar.isArray = function(val) {
 ivar.isNumber = function(val) {
 	if (isNaN(val))
 		return false;
-	return typeof val === 'number';
+		
+	var type = typeof val;
+	if (type === 'object')
+		type = ivar.getClass(val).toLowerCase();
+		
+	return type === 'number';
 };
 
 ivar.isInt = function(val) {
@@ -888,12 +944,12 @@ ivar.loop = function(times, fn, step) {
 	}
 };
 
-ivar.find = function(obj, val) {
+ivar.findValue = function(obj, val) {
 	for (var i in obj) {
-		if (obj[i] == val)
+		if (obj[i] === val)
 			return i;
 	}
-	return null;
+	return;
 };
 
 ivar.uid = function(saltSize) {
