@@ -166,11 +166,15 @@ A special example would be if you define min like this: `min:{type:string, value
 
 **[6] Array**
 
-* **uniqueItems** or **unique** [e] {boolean} -
-* **items** {object:schema | array[object:schema]} - 
-* **additionalItems** {boolean} -
-* **minItems** {+integer=0} -
-* **maxItems** {+integer} -
+* **uniqueItems** or **unique** [e] {boolean=false} - Check if the contents of the array are unique. If the value repeats itself validation fails. Default value is false. **Remember** object comparison is performed by CRC32!
+
+* **items** {object:schema | array[object:schema]} - Can be an object which is a valid schema or an array of valid schema objects. If it is a schema, each item in the array is validated against this schema. If it is an array of schemas, each array item is validated by a schema of the same index position.
+ 
+* **additionalItems** {boolean=true} - If this motherfucker is false, and if an array instance has more items than specified in schema keyword items, this motherfucker fails the validation. We happy?
+
+* **minItems** {+integer=0} - Defines minimum allowed items in an array instance. MUST be a positive integer. Default value is zero.
+
+* **maxItems** {+integer} - Defines maximum allowed items in an array instance. MUST be a positive integer. Default value is zero.
 
 **[7] Object**
 
@@ -180,11 +184,18 @@ A special example would be if you define min like this: `min:{type:string, value
  
 * **patternProperties** {object[object:schema]} - Use regular expression strings to select properties of an object instance and test them against correct schemas. All properties of an instance that match one schema formed property under this keyword will be tested against the supplied schema. Regular expression properties can be written in two ways `"ab+c"` or with properties `"/ab+c/gi"`.
 
-* **additionalProperties** {boolean | object:schema} - If this schema property is false then all of instance object's properties must be covered with schemas defined in properties and patternProperties segment of the schema. If there are any that are not covered the validation fails. In other words only properties defined in properties and patternProperties are allowed. The keyword can also be one schema for all other additional properies.
+* **additionalProperties** {boolean=true | object:schema} - If this schema property is false then all of instance object's properties must be covered with schemas defined in properties and patternProperties segment of the schema. If there are any that are not covered the validation fails. In other words only properties defined in properties and patternProperties are allowed. The keyword can also be one schema for all other additional properies. Default value is true, which means that additional properties are allowed.
 
-* **dependencies** {object[array[string:property-names]]} - 
-* **minProperties** {+integer=0} - 
-* **maxProperties** {+integer} -
+* **dependencies** {object[array[string:property-names]]} -  It is an object that hold arrays in properties labeled as expected properties of an instance object. Arrays contain strings of property names the labeled property name depends on. If there are no such propertis the validation fails.
+
+* **minProperties** {+integer=0} - Minimal number of properties. MUST be a positive integer. Default value is zero.
+* **maxProperties** {+integer} - Maximum number of properties. MUST be a positive integer.
+
+More details
+------------
+
+JSON Schema draft 04: http://json-schema.org/latest/json-schema-validation.html  
+JSON Schema draft 03: http://tools.ietf.org/html/draft-zyp-json-schema-03
 
 Authors
 -------
@@ -201,13 +212,15 @@ Licence
 -------
 **Motherfuckin' MIT** protects our ass...
 
-`Copyright (C) 2013. Nikola Stamatovic Stamat < stamat@ivartech.com > ivartech.com  
+`
+Copyright (C) 2013. Nikola Stamatovic Stamat < stamat@ivartech.com > ivartech.com  
   
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:  
   
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.  
   
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.`  
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+`  
 
 Curiosities
 -----------

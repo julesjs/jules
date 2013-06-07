@@ -27,11 +27,11 @@ ivar._global = this;
 ivar._private.output = undefined; //define debug output function, print your output somewhere else...
 
 ivar.regex = {};
-ivar.regex.regex = /^\/(.*)\/(?:[igm]{0,3})$/;
+ivar.regex.regex = /^\/(.*)\/(?:(?:i?g?m?)|(?:i?m?g?)|(?:g?i?m?)|(?:g?m?i?)|(?:m?g?i?)|(?:m?i?g?))$/;
 ivar.regex.email = /^[a-z0-9\._\-]+@[a-z\.\-]+\.[a-z]{2,4}$/;
 
 //FUCK THIS SHIT!
-ivar.regex.uri = /^(?:([a-z\-\+\.]+):)?(?:\/\/)?(?:([^?#@:]*)(?::([^?#@:]*))?@)?([^?#\s\/]*)(?::([0-9]{1,5}))?((?:\/?[^?#\s\/]*)*)(?:\?([^#\s"]*))?(?:#([^\s"]*))?$/;
+ivar.regex.uri = /^(?:([a-z\-\+\.]+):)?(?:\/\/)?(?:([^?#@:]*)(?::([^?#@:]*))?@)?([^?#\s\/]*)(?::([0-9]{1,5}))?(?:[^?#\s]*)(?:\?([^#\s"]*))?(?:#([^\s"]*))?$/;
 ivar.regex.time = /^(([0-1][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])$/;
 
 ivar.regex.function_name = /function\s+([a-zA-Z0-9_\$]+?)\s*\(/;
