@@ -91,33 +91,29 @@ schema7 = JSON.parse(JSON.stringify(schema6)); //clone
 schema7.maxProperties = 3;
 schema7.additionalProperties = {"type": "boolean"};
 
+function echo(msg) {
+	var elem = document.createElement('p');
+	elem.innerHTML = msg;
+	document.body.appendChild(elem);
+}
+
 //TEST
-console.log('Validate `a` against `schema 1`');
-console.log(jules.validate(a, schema1)); //true
+echo('Validate `a` against `schema 1`: '+ jules.validate(a, schema1)); //true
 
-console.log('Validate `b` against `schema 2`');
-console.log(jules.validate(b, schema2)); //true
+echo('Validate `b` against `schema 2`: '+ jules.validate(b, schema2)); //true
 
-console.log('Validate `a` against `schema 3`');
-console.log(jules.validate(a, schema3)); //true
+echo('Validate `a` against `schema 3`: '+ jules.validate(a, schema3)); //true
 
-console.log('Validate `b` against `schema 3`');
-console.log(jules.validate(b, schema3)); //true
+echo('Validate `b` against `schema 3`: '+ jules.validate(b, schema3)); //true
 
-console.log('Validate `c` against `schema 4`');
-console.log(jules.validate(c, schema4)); //true
+echo('Validate `c` against `schema 4`: '+ jules.validate(c, schema4)); //true
 
-console.log('Validate `d` against `schema 4`');
-console.log(jules.validate(d, schema4)); //false
+echo('Validate `d` against `schema 4`: '+ jules.validate(d, schema4)); //false
 
-console.log('Validate `d` against `schema 5`');
-console.log(jules.validate(d, schema5)); //true
+echo('Validate `d` against `schema 5`: '+ jules.validate(d, schema5)); //true
 
-console.log('Validate `e` against `schema 6`');
-console.log(jules.validate(e, schema6)); //true
+echo('Validate `e` against `schema 6`: '+ jules.validate(e, schema6)); //true
 
-console.log('Validate `f` against `schema 6`');
-console.log(jules.validate(f, schema6)); //false
+echo('Validate `f` against `schema 6`: '+ jules.validate(f, schema6)); //false
 
-console.log('Validate `f` against `schema 7`');
-console.log(jules.validate(f, schema7)); //true
+echo('Validate `f` against `schema 7`: '+ jules.validate(f, schema7)); //true

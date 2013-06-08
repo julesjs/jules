@@ -15,6 +15,7 @@
 
 var jules = {};
 jules.aggregate_errors = true;
+jules.dont_label = false;
 jules.errors = [];
 jules.error_messages = {};
 jules.error_messages['type'] = '{{schema_id}} Invalid type. Type of data should be {{key_val}}';
@@ -37,19 +38,19 @@ jules.validate = function(value, schema, nickcallback) {
 };
 
 jules.initScope = function(schema) {
-	if(!schema.id)
+	console.log('=================');
+	if(!schema.id && !jules.dont_label)
 		schema.id = 'schema:'+ivar.crc32(JSON.stringify(schema));
 	
-	if(!ivar.isSet(jules.refs[schema.id]))
+	if(schema.id && !ivar.isSet(jules.refs[schema.id]))
 		jules.refs[schema.id] = schema;
 	
-	jules.current_scope = jules.refs[schema.id];
+	jules.current_scope = schema;
 		
-	return jules.refs[schema.id];
+	return schema;
 };
 
 jules._validate = function(value, schema, aggregate_errors) {
-
 	aggregate_errors = ivar.isSet(aggregate_errors)?aggregate_errors:jules.aggregate_errors;
 	
 	var result = true;
@@ -75,7 +76,7 @@ jules._validate = function(value, schema, aggregate_errors) {
 		//ivar.echo(schema.id+' - '+i+': '+valid);
 		if(jules.onEachField) jules.onEachField(i, value, schema, valid);
 		if(!valid) {
-			errors.push(jules.invalid(i, value, schema));
+			errors.push(jules.generateErrorMessage(value, i, schema));
 			if(!aggregate_errors) {
 				result = false;
 				break;
@@ -91,7 +92,7 @@ jules._validate = function(value, schema, aggregate_errors) {
 	return result;
 };
 
-jules.invalid = function(i, value, schema) {
+jules.generateErrorMessage = function(value, i, schema) {
 	var key_val = schema[i];
 	var val = value.toString();
 	if(ivar.isObject(value))
@@ -99,7 +100,7 @@ jules.invalid = function(i, value, schema) {
 	var sch = key_val.toString();
 	if(ivar.isObject(key_val))
 		sch = JSON.stringify(key_val);
-	var message = jules.error_messages[i]?jules.error_messages[i].template({i: i, value: val, schema_id: schema.id, key_val: sch}):'['+schema.id+ ' > error] '+i+': '+sch+' -> ' + val;
+	var message = jules.error_messages[i]?jules.error_messages[i].template({keyword: i, value: val, schema_id: schema.id, key_val: sch}):'['+schema.id+ ']: '+i;
 	return message;
 }
 
