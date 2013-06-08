@@ -72,7 +72,7 @@ jules._validate = function(value, schema, aggregate_errors) {
 			if(jules.onEachField) jules.onEachField(value, i, schema, valid);
 			continue;
 		}
-		ivar.echo(schema.id+' - '+i+': '+valid);
+		//ivar.echo(schema.id+' - '+i+': '+valid);
 		if(jules.onEachField) jules.onEachField(i, value, schema, valid);
 		if(!valid) {
 			errors.push(jules.invalid(i, value, schema));
@@ -104,253 +104,6 @@ jules.invalid = function(i, value, schema) {
 }
 
 ivar.namespace('jules.validator');
-ivar.namespace('jules.validator.object');
-
-// ====== [Validators]: Object ====== //
-
-//XXX: has _validate
-jules.validator.object.dependencies = function(value, i, schema) {
-	var dep = schema[i];
-	for(var i in dep) {
-		//TODO: if (ivar.regex.regex.test(i)) {
-		if(ivar.isArray(dep[i])) {
-			if(value.hasOwnProperty(i))
-				for(var j = 0; j < dep[i].length; j++) {
-					if(!value.hasOwnProperty(dep[i][j]))
-						return false;
-				}
-		} else {
-			if(value.hasOwnProperty(i))
-				if(!jules._validate(value, dep[i]))
-						return false;
-		}
-	}
-	return true;
-};
-
-jules.validator.object.requiredProperties = function(value, i, schema) {
-	var arr = schema[i];
-	for(var i = 0; i < arr.length; i++) {
-		if(!value.hasOwnProperty(arr[i]))
-			return false;
-	}
-	return true;
-};
-
-//XXX: has _validate
-jules._property = function(value, prop, schema, bool) {
-	if(value.hasOwnProperty(prop)) {
-		if(!jules._validate(value[prop], schema[prop]))
-			return false;
-	} else {
-		if(!bool)
-			return false;
-	}
-	
-	return true;
-};
-
-//XXX: has _validate
-jules._patternProperty = function(value, prop, schema, bool) {
-	var found = ivar.getProperties(value, prop);
-	for(var j = 0; j < found.length; j++) {
-		if (!jules._validate(value[found[j]], schema[prop]))
-			return false;
-	}
-	if (!bool && found.length === 0) return false;
-		
-	return true;
-};
-
-jules.validator.object.patternProperties = function(value, i, schema) {
-	var prop = schema[i];
-	for(var i in prop) {
-		if (!jules._patternProperty(value, i, prop))
-			return false;
-	}
-	return true;
-};
-
-jules.validator.object.properties = function(value, i, schema, bool) {
-	var prop = schema[i];
-	if(!ivar.isSet(bool))
-		bool = true;
-	for(var i in prop) {
-		if (ivar.regex.regex.test(i)) {
-			if (!jules._patternProperty(value, i, prop, bool))
-				return false;
-		} else {
-			if (!jules._property(value, i, prop, bool))
-				return false;
-		}
-	}
-	return true;
-};
-
-jules.validator.object.additionalProperties = function(value, i, schema) {
-	var prop = schema[i];
-	if (ivar.isObject(prop)) {
-		return jules._validateAdditionalProperties(value, i, schema);
-	} else {
-		if (prop === false) {
-			return !jules._getAdditionalProperties(value, i, schema).length > 0;
-		}
-	}
-	return true;
-};
-
-jules._validateAdditionalProperties = function(value, i, schema) {
-	var arr = jules._getAdditionalProperties(value, i, schema);
-	var additional_schema = schema[i];
-	for(var i = 0; i < arr.length; i++) {
-		if(value.hasOwnProperty(arr[i]) && !jules._validate(value[arr[i]], additional_schema))
-			return false;
-	}
-	return true;
-};
-
-jules._getAdditionalProperties = function(value, i, schema) {
-	var arr = ivar.getProperties(value);
-	
-	if(schema.hasOwnProperty('properties')) {
-		for(var i in schema.properties) {
-			arr.remove(i);
-		}
-	}
-	
-	if(schema.hasOwnProperty('patternProperties')) {
-		for(var i in schema.patternProperties) {
-			arr.remove(i);
-		}
-	}
-	
-	return arr;
-};
-
-jules.validator._propertyRange = function(obj, del) {
-	var count = 0;
-	for(var i in obj) {
-		count++;
-		if(count > del)
-			break;
-	}
-	return count;
-};
-
-jules.validator.object.minProperties = function(value, i, schema) {
-	var count = jules.validator._propertyRange(value, schema[i]);
-	return count >= schema[i];
-};
-
-jules.validator.object.maxProperties = function(value, i, schema) {
-	var count = jules.validator._propertyRange(value, schema[i]);
-	return count <= schema[i];
-};
-
-// ====== [Validators]: Array ====== //
-ivar.namespace('jules.validator.array');
-
-jules.validator.array.unique = function(value) {
-	var aggr = {};
-	for(var i = 0; i < value.length; i++) {
-		var val = ivar.toMapKey(value[i]);
-		if(!aggr.hasOwnProperty(val)) {
-			aggr[''+val] = 1;
-		} else {
-			return false;
-		}
-	}
-	return true;
-};
-
-jules.validator.array.uniqueItems = jules.validator.array.unique;
-
-//XXX: this one has _validate
-jules.validator.array.items = function(value, i, schema) {
-	schema = schema[i];
-	if(ivar.isObject(schema)) {
-		for(var i = 0; i < value.length; i++) {
-			var valid = jules._validate(value[i], schema);
-			if(!valid) return false;
-		}
-		return true;
-	} else {
-		for(var i = 0; i < schema.length; i++) {
-			var valid = jules._validate(value[i], schema[i]);
-			if(!valid) return false;
-		}
-		return true;
-	}
-};
-
-jules.validator.array.additionalItems = function(value, i, schema) {
-	if(schema[i]) return true;
-	return value.length <= schema.items.length;
-};
-
-jules.validator.array.minItems = jules.validator.min;
-jules.validator.array.maxItems = jules.validator.max;
-
-// ====== [Validators]: String ====== //
-ivar.namespace('jules.validator.string');
-jules.validator.string.regex = function(value, i, schema) {
-	var regex = schema[i];
-	if(!ivar.isString(value))
-		value = value.toString();
-	if(!(regex instanceof RegExp))
-		regex = jules.buildRegExp(schema[i]);	
-	return regex.test(value);
-};
-
-jules.validator.string.pattern = jules.validator.string.regex;
-
-jules.formats = {}; //date-time YYYY-MM-DDThh:mm:ssZ, date YYYY-MM-DD, time hh:mm:ss, utc-milisec, regex, color, style, phone E.123, uri, url, email, ipv4, ipv6, host-name
-jules.formats.email = function() {
-	return ivar.regex.email;
-};
-
-jules.formats.regex = function() {
-	return ivar.regex.regex;
-};
-
-jules.formats.time = function() {
-	return ivar.regex.time;
-};
-
-jules.formats.uri = function() {
-	return ivar.regex.uri;
-};
-
-jules.validator.string.format = function(value, i, schema) {
-	return jules.formats[schema[i]].test(value);
-};
-
-jules.validator.string.minLength = jules.validator.min;
-jules.validator.string.maxLength = jules.validator.max;
-
-// ====== [Validators]: Number ====== //
-ivar.namespace('jules.validator.number');
-
-jules.validator.number.numberRegex = jules.validator.string.regex;
-jules.validator.number.numberPattern = jules.validator.string.regex;
-
-jules.validator.number.minimum = jules.validator.min;
-jules.validator.number.maximum = jules.validator.max;
-
-jules.validator.number.exclusiveMinimum = function(value, i, schema) {
-	return jules.validator.min(value, 'minimum', schema, schema[i]);
-};
-
-jules.validator.number.exclusiveMaximum = function(value, i, schema) {
-	return jules.validator.min(value, 'maximum', schema, schema[i]);
-};
-
-jules.validator.number.dividableBy = function(value, i, schema) {
-	if(schema[i] === 0)
-		return false;
-	return value%schema[i] === 0;
-};
-jules.validator.number.multipleOf = jules.validator.number.dividableBy;
 
 // ====== [Validators]: Any Type ====== //
 
@@ -368,7 +121,7 @@ jules.validator._max = function(value, max) {
 
 jules.validator._range = function(value, i, schema, exclusive) {
 	var mm = schema[i];
-	var fn = '_'+i;
+	var fn = '_'+i.substring(0, 3);
 	var type = ivar.whatis(value);
 	if(type === 'float')
 		type = 'number';
@@ -381,7 +134,7 @@ jules.validator._range = function(value, i, schema, exclusive) {
 	
 	if(ivar.isNumber(mm))
 		mm = jules.buildRangeObj(mm, exclusive);
-	
+		
 	if (ivar.isObject(mm)) {
 		if(mm.hasOwnProperty('type') && type !== mm.type)
 			return true;
@@ -390,13 +143,9 @@ jules.validator._range = function(value, i, schema, exclusive) {
 	
 	var other_types = null;
 	
-	if(type !== 'number' && ivar.isFloat(mm.value))
-		mm.value = Math.round(mm.value);
-	
 	if (ivar.isArray(mm)) {
 		for(var i = 0; i < mm.length; i++) {
 			if(mm[i].hasOwnProperty('type')) {
-			
 				if(type === mm[i].type)
 					return jules.validator[fn](value, mm[i]);
 			} else {
@@ -654,6 +403,246 @@ jules.validateSchema = function(schema, metaschema) {
 		
 	return jules._validate(schema, metaschema, false);
 };
+
+ivar.namespace('jules.validator.object');
+
+// ====== [Validators]: Object ====== //
+
+//XXX: has _validate
+jules.validator.object.dependencies = function(value, i, schema) {
+	var dep = schema[i];
+	for(var i in dep) {
+		//TODO: if (ivar.regex.regex.test(i)) {
+		if(ivar.isArray(dep[i])) {
+			if(value.hasOwnProperty(i))
+				for(var j = 0; j < dep[i].length; j++) {
+					if(!value.hasOwnProperty(dep[i][j]))
+						return false;
+				}
+		} else {
+			if(value.hasOwnProperty(i))
+				if(!jules._validate(value, dep[i]))
+						return false;
+		}
+	}
+	return true;
+};
+
+jules.validator.object.requiredProperties = function(value, i, schema) {
+	var arr = schema[i];
+	for(var i = 0; i < arr.length; i++) {
+		if(!value.hasOwnProperty(arr[i]))
+			return false;
+	}
+	return true;
+};
+
+//XXX: has _validate
+jules._property = function(value, prop, schema, bool) {
+	if(value.hasOwnProperty(prop)) {
+		if(!jules._validate(value[prop], schema[prop]))
+			return false;
+	} else {
+		if(!bool)
+			return false;
+	}
+	
+	return true;
+};
+
+//XXX: has _validate
+jules._patternProperty = function(value, prop, schema, bool) {
+	var found = ivar.getProperties(value, prop);
+	for(var j = 0; j < found.length; j++) {
+		if (!jules._validate(value[found[j]], schema[prop]))
+			return false;
+	}
+	if (!bool && found.length === 0) return false;
+		
+	return true;
+};
+
+jules.validator.object.patternProperties = function(value, i, schema) {
+	var prop = schema[i];
+	for(var i in prop) {
+		if (!jules._patternProperty(value, i, prop))
+			return false;
+	}
+	return true;
+};
+
+jules.validator.object.properties = function(value, i, schema, bool) {
+	var prop = schema[i];
+	if(!ivar.isSet(bool))
+		bool = true;
+	for(var i in prop) {
+		if (ivar.regex.regex.test(i)) {
+			if (!jules._patternProperty(value, i, prop, bool))
+				return false;
+		} else {
+			if (!jules._property(value, i, prop, bool))
+				return false;
+		}
+	}
+	return true;
+};
+
+jules.validator.object.additionalProperties = function(value, i, schema) {
+	var prop = schema[i];
+	if (ivar.isObject(prop)) {
+		return jules._validateAdditionalProperties(value, i, schema);
+	} else {
+		if (prop === false) {
+			return !jules._getAdditionalProperties(value, i, schema).length > 0;
+		}
+	}
+	return true;
+};
+
+jules._validateAdditionalProperties = function(value, i, schema) {
+	var arr = jules._getAdditionalProperties(value, i, schema);
+	var additional_schema = schema[i];
+	for(var i = 0; i < arr.length; i++) {
+		if(value.hasOwnProperty(arr[i]) && !jules._validate(value[arr[i]], additional_schema))
+			return false;
+	}
+	return true;
+};
+
+jules._getAdditionalProperties = function(value, i, schema) {
+	var arr = ivar.getProperties(value);
+	
+	if(schema.hasOwnProperty('properties')) {
+		for(var i in schema.properties) {
+			arr.remove(i);
+		}
+	}
+	
+	if(schema.hasOwnProperty('patternProperties')) {
+		for(var i in schema.patternProperties) {
+			i = i.toRegExp();
+			arr.remove(i);
+		}
+	}
+	return arr;
+};
+
+jules.validator._propertyRange = function(obj, del) {
+	var count = 0;
+	for(var i in obj) {
+		count++;
+		if(count > del)
+			break;
+	}
+	return count;
+};
+
+jules.validator.object.minProperties = function(value, i, schema) {
+	var count = jules.validator._propertyRange(value, schema[i]);
+	return count >= schema[i];
+};
+
+jules.validator.object.maxProperties = function(value, i, schema) {
+	var count = jules.validator._propertyRange(value, schema[i]);
+	return count <= schema[i];
+};
+
+// ====== [Validators]: Array ====== //
+ivar.namespace('jules.validator.array');
+
+jules.validator.array.unique = function(value) {
+	var aggr = {};
+	for(var i = 0; i < value.length; i++) {
+		var val = ivar.toMapKey(value[i]);
+		if(!aggr.hasOwnProperty(val)) {
+			aggr[''+val] = 1;
+		} else {
+			return false;
+		}
+	}
+	return true;
+};
+
+jules.validator.array.uniqueItems = jules.validator.array.unique;
+
+//XXX: this one has _validate
+jules.validator.array.items = function(value, i, schema) {
+	schema = schema[i];
+	if(ivar.isObject(schema)) {
+		for(var i = 0; i < value.length; i++) {
+			var valid = jules._validate(value[i], schema);
+			if(!valid) return false;
+		}
+		return true;
+	} else {
+		for(var i = 0; i < schema.length; i++) {
+			var valid = jules._validate(value[i], schema[i]);
+			if(!valid) return false;
+		}
+		return true;
+	}
+};
+
+jules.validator.array.additionalItems = function(value, i, schema) {
+	if(schema[i]) return true;
+	return value.length <= schema.items.length;
+};
+
+jules.validator.array.minItems = jules.validator.min;
+jules.validator.array.maxItems = jules.validator.max;
+
+// ====== [Validators]: String ====== //
+ivar.namespace('jules.validator.string');
+jules.validator.string.regex = function(value, i, schema) {
+	var regex = schema[i];
+	if(!ivar.isString(value))
+		value = value.toString();
+	if(!(regex instanceof RegExp))
+		regex = jules.buildRegExp(schema[i]);	
+	return regex.test(value);
+};
+
+jules.validator.string.pattern = jules.validator.string.regex;
+
+jules.formats = {}; //date-time YYYY-MM-DDThh:mm:ssZ, date YYYY-MM-DD, time hh:mm:ss, utc-milisec, regex, color, style, phone E.123, uri, url, email, ipv4, ipv6, host-name
+jules.formats.email = ivar.regex.email;
+
+jules.formats.regex = ivar.regex.regex;
+
+jules.formats.time = ivar.regex.time;
+
+jules.formats.uri = ivar.regex.uri;
+
+jules.validator.string.format = function(value, i, schema) {
+	return jules.formats[schema[i]].test(value);
+};
+
+jules.validator.string.minLength = jules.validator.min;
+jules.validator.string.maxLength = jules.validator.max;
+
+// ====== [Validators]: Number ====== //
+ivar.namespace('jules.validator.number');
+
+jules.validator.number.numberRegex = jules.validator.string.regex;
+jules.validator.number.numberPattern = jules.validator.string.regex;
+
+jules.validator.number.minimum = jules.validator.min;
+jules.validator.number.maximum = jules.validator.max;
+
+jules.validator.number.exclusiveMinimum = function(value, i, schema) {
+	return jules.validator.min(value, 'minimum', schema, schema[i]);
+};
+
+jules.validator.number.exclusiveMaximum = function(value, i, schema) {
+	return jules.validator.max(value, 'maximum', schema, schema[i]);
+};
+
+jules.validator.number.dividableBy = function(value, i, schema) {
+	if(schema[i] === 0)
+		return false;
+	return value%schema[i] === 0;
+};
+jules.validator.number.multipleOf = jules.validator.number.dividableBy;
 
 
 // ====== Some utils... ====== //

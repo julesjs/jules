@@ -1,71 +1,123 @@
-var schema = {
-		'id': 'http://example.com/test-schema#',
-		"$schema": "https://dl.dropboxusercontent.com/u/2808807/schema#",
-		'strict':true,
-		'type': ['object','array'],
-		//'disallow': ['integer', 'string'], //disallowed types, can be array
-		'requiredProperties': ['lol'],
-		//'default': null,
-		'definitions': {
-			'test': {
-				min: 0
-			},
-			'test1': {
-				type: 'array'
-			},
-		},
-		//'min': {
-		//	value: 0,
-		//	exclusive: false
-		//},
-		//'max': {
-		//	value: 30,
-		//	exclusive: false
-		//},
-		min: [{type: 'object', value: 2, exclusive: true}, {type: 'array', value: 3, exclusive: false}],
-		max: [{type: 'object', value: 4, exclusive: false}],
-		
-		minProperties: 1,
-		maxProperties: 4,
-		
-		properties: {
-			'/lo/': {$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#/definitions/test'},
-			'omg': {},
-			'rofl': {}
-		},
-		
-		"enum": ["123","1234",["123f45"], [1,2,3],{lol:6, rofl:2, omg:4}, {lol:1, rofl:2}],
-		
-		additionalProperties: false,
-		
-		//'items':[{type: 'int', min:1},{type: 'int', min:1},{type: 'string'}],
-		
-		//'additionalItems': false,
-		
-		//'unique': true, //if array items must be unique 	//uniqueProperties: []  //not Unique ITEMS!!! unique items dont have sense
-		//allOf: [{id: 'allof',$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#'}],
-		//not: [{id: 'not',$ref:'https://dl.dropboxusercontent.com/u/2808807/test.json#/definitions/test1'}],
-		'if': [{
-			condition: {type:'object'},
-			then: {dependencies: {'lol':['omg','rofl']}},
-			'else': {}
-		}, {
-			not: true,
-			condition: {type:'array'},
-			then: {max:[{type: 'object', value: 4, exclusive: false}]},
-			'else': {}
-		}]
-		//'regex': 'f', //sting,int,float
-		//'format': 'email', //can be array
-		
-		//'forbidden': ['stamatron@gmail.com'] // true for object id no properties allowed
+var a = 4, 
+	b = 'you@example.com', 
+	c = [1,2,3,4], 
+	d = [1,2,'f', 4],
+	e = {foo:1, bar: 'baz'},
+	f = {foo:1, bar: 'baz', qux: true};
 
-		//---- other ---//
-		//'only': ['lol6zors', 6, 4], //true for object if you want selected properties in properties property of schema to be only ones allowed
-		//'dividableBy': 3 //number
-		//items: [{schema}] Schemas for an item!
-		//properties: {propertyName:schema...} //object
-}
+var schema1 = {
+	"type": "integer",
+	"minimum": 1,
+	"maximum": 5,
+	"exclusiveMaximum": true,
+	"enum": [1,2,3,4]
+},
+
+schema2 = {
+	"type": "string",
+	"format": "email",
+	"minLength" : 8,
+	"maxLength" : 64
+},
+
+schema3 = {
+	"type": ["integer","string"],
+	"format": "email",
+	"minLength" : 8,
+	"maxLength" : 64,
+	"minimum": 1,
+	"maximum": 5,
+	"multipleOf": 2,
+	"exclusiveMaximum": true,
+	"oneOf":[{"type":"integer", "enum": [1,2,3,4]},
+		{"type":"string", "pattern": "\.com"}]
+},
+
+schema4 = {
+	"definitions": {
+		"someIntegers": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 5,
+			"exclusiveMaximum": true,
+			"enum": [1,2,3,4]
+		}
+	},
+	"type": ["array"],
+	"maxItems" : 16,
+	"uniqueItems": true,
+	"items":{
+		"$ref":"#definitions/someIntegers"
+	}
+},
+
+schema5 = {
+	"type": ["array"],
+	"maxItems" : 16,
+	"uniqueItems": true,
+	"items":[schema1, schema1, {
+		"type": "string",
+		"maxLength": 1,
+		"pattern": "f"
+	}, schema1],
+	
+	"additionalItems": false
+},
+
+schema6 = {
+	"definitions": {
+		"someIntegers": schema1
+	},
+	"type": "object",
+	"maxProperties" : 2,
+	"properties": {
+		"foo": {
+			"$ref":"#definitions/someIntegers"
+		}
+	},
+	"patternProperties": {
+		"^ba[a-z]+": {
+			"type": "string",
+			"maxLength": 3
+		}
+	},
+	"dependencies": {
+		"foo": ["bar"]
+	},
+	"additionalProperties": false
+},
+
+schema7 = JSON.parse(JSON.stringify(schema6)); //clone
+schema7.maxProperties = 3;
+schema7.additionalProperties = {"type": "boolean"};
 
 //TEST
-ivar.echo(jules.validate({lol:6, rofl:2, omg:4, foo:'a'}, schema));
+console.log('Validate `a` against `schema 1`');
+console.log(jules.validate(a, schema1)); //true
+
+console.log('Validate `b` against `schema 2`');
+console.log(jules.validate(b, schema2)); //true
+
+console.log('Validate `a` against `schema 3`');
+console.log(jules.validate(a, schema3)); //true
+
+console.log('Validate `b` against `schema 3`');
+console.log(jules.validate(b, schema3)); //true
+
+console.log('Validate `c` against `schema 4`');
+console.log(jules.validate(c, schema4)); //true
+
+console.log('Validate `d` against `schema 4`');
+console.log(jules.validate(d, schema4)); //false
+
+console.log('Validate `d` against `schema 5`');
+console.log(jules.validate(d, schema5)); //true
+
+console.log('Validate `e` against `schema 6`');
+console.log(jules.validate(e, schema6)); //true
+
+console.log('Validate `f` against `schema 6`');
+console.log(jules.validate(f, schema6)); //false
+
+console.log('Validate `f` against `schema 7`');
+console.log(jules.validate(f, schema7)); //true

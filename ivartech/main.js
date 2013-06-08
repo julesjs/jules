@@ -125,6 +125,8 @@ Array.prototype.remove = function(id) {
 			return ivar.patternRemove(this, id);
 		}
 	}
+	if(ivar.isRegExp(id))
+		return ivar.patternRemove(this, id);
 	return false;
 };
 

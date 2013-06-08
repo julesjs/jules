@@ -2,22 +2,155 @@
 =====
 **JULES - JavaScript JSON Schema Validator** (yes... another one...)   
 
-* [d04] [JSON Schema draft 04][http://json-schema.org/latest/json-schema-core.html] (compatible) - [(schema^)][http://json-schema.org/draft-04/schema]
-* [d03] [JSON Schema draft 03][http://tools.ietf.org/html/draft-zyp-json-schema-03] (partially compatible, extends is an exception) - [(schema^)][http://json-schema.org/draft-03/schema]
-
-* [e] JSON Schema 04+03+extensions hybrid - [(schema^)][]
+* Easy to use
+* Easy to extend
+* Supports both JSON Schema draft-04 and draft-03
 
 About
 -----------
 An easily extensible JavaScript JSON validator written in declarative style which enabled easy extending and pay as you go execution, minimizing the number of functions executed and conditions passed while traversing through schema.   
 This way it is an open platform for experimenting with validation rules and enabling easier creation of a future scheme for all of us to benifit from.  
+It supports both draft-04 and draft-03 keywords.  
 One **Bad Motherfucker**...  
   
-Note that this is a client side schema validator, and not a Node.js module. Well not yet... Made exclusively for validating form fields and JSON requests.
+Note that this is a client side schema validator, and not a Node.js module. Well not yet... Made exclusively for validating form fields and JSON requests. (That explains the purely done object comparison and error reports for complex schemas)
 
 Usage example
 -------------
-`soon to come`
+Simplest possible:
+```javascript
+alert(jules.validate(instance, schema)); 
+//instance can be any instance od type null, boolean, integer, number, string, array, object
+//schema argument can be a string url of a schema
+```
+  
+A bit more complex:
+```javascript
+var a = 4, 
+	b = 'you@example.com', 
+	c = [1,2,3,4], 
+	d = [1,2,'f', 4],
+	e = {foo:1, bar: 'baz'},
+	f = {foo:1, bar: 'baz', qux: true};
+
+var schema1 = {
+	"type": "integer",
+	"minimum": 1,
+	"maximum": 5,
+	"exclusiveMaximum": true,
+	"enum": [1,2,3,4]
+},
+
+schema2 = {
+	"type": "string",
+	"format": "email",
+	"minLength" : 8,
+	"maxLength" : 64
+},
+
+schema3 = {
+	"type": ["integer","string"],
+	"format": "email",
+	"minLength" : 8,
+	"maxLength" : 64,
+	"minimum": 1,
+	"maximum": 5,
+	"multipleOf": 2,
+	"exclusiveMaximum": true,
+	"oneOf":[{"type":"integer", "enum": [1,2,3,4]},
+		{"type":"string", "pattern": "\.com"}]
+},
+
+schema4 = {
+	"definitions": {
+		"someIntegers": {
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 5,
+			"exclusiveMaximum": true,
+			"enum": [1,2,3,4]
+		}
+	},
+	"type": ["array"],
+	"maxItems" : 16,
+	"uniqueItems": true,
+	"items":{
+		"$ref":"#definitions/someIntegers"
+	}
+},
+
+schema5 = {
+	"type": ["array"],
+	"maxItems" : 16,
+	"uniqueItems": true,
+	"items":[schema1, schema1, {
+		"type": "string",
+		"maxLength": 1,
+		"pattern": "f"
+	}, schema1],
+	
+	"additionalItems": false
+},
+
+schema6 = {
+	"definitions": {
+		"someIntegers": schema1
+	},
+	"type": "object",
+	"maxProperties" : 2,
+	"properties": {
+		"foo": {
+			"$ref":"#definitions/someIntegers"
+		}
+	},
+	"patternProperties": {
+		"^ba[a-z]+": {
+			"type": "string",
+			"maxLength": 3
+		}
+	},
+	"dependencies": {
+		"foo": ["bar"]
+	},
+	"additionalProperties": false
+},
+
+schema7 = JSON.parse(JSON.stringify(schema6)); //clone
+schema7.maxProperties = 3;
+schema7.additionalProperties = {"type": "boolean"};
+
+//TEST
+console.log('Validate `a` against `schema 1`');
+console.log(jules.validate(a, schema1)); //true
+
+console.log('Validate `b` against `schema 2`');
+console.log(jules.validate(b, schema2)); //true
+
+console.log('Validate `a` against `schema 3`');
+console.log(jules.validate(a, schema3)); //true
+
+console.log('Validate `b` against `schema 3`');
+console.log(jules.validate(b, schema3)); //true
+
+console.log('Validate `c` against `schema 4`');
+console.log(jules.validate(c, schema4)); //true
+
+console.log('Validate `d` against `schema 4`');
+console.log(jules.validate(d, schema4)); //false
+
+console.log('Validate `d` against `schema 5`');
+console.log(jules.validate(d, schema5)); //true
+
+console.log('Validate `e` against `schema 6`');
+console.log(jules.validate(e, schema6)); //true
+
+console.log('Validate `f` against `schema 6`');
+console.log(jules.validate(f, schema6)); //false
+
+console.log('Validate `f` against `schema 7`');
+console.log(jules.validate(f, schema7)); //true
+
+```
 
 Extending example
 -----------------
@@ -29,16 +162,6 @@ Warnings
 
 * Be careful while using **$ref**, you can fall into an infinite loop.
 
-To Do
------
-- [ ] Schema extends
-- [ ] Refactor the code (this will enable all other tasks to be completed with ease)
-- [ ] Better errors. Point out whitch part of the schema failed the validation.
-- [ ] Better $ref resolving, forbid the infinite loop
-- [ ] Comment the code! The thing you hate the most... but dont come back whining who's code is this after a year...
-- [ ] Hyper Schema
-- [ ] Node.js package
-
 Compatibility
 -------------
 The validator can validate schema defined by draft 04 and/or 03. That means that you will be able to mix different schemas, and you can extend the validator to support earlier or drafts yet to come, or even make custom keywords and rules for them or just renames. In a form of an experiment some custom keywords were added witch you might find unethical. But don't forget that you can easily chane the code to fit your liking.  
@@ -46,9 +169,9 @@ Schema for supported extension is yet to be written but you can start using the 
 
 Supported schema keywords
 -------------------------
-*!note* - non of the keywords are mandatory  
+*NOTE:* - non of the keywords are mandatory  
   
-*Legend*:  
+*LEGEND:*  
 [d04] - only in official draft 04  
 [d03] - only in official draft 03, depreciated  
 [e]   - ivartech custom extension  
@@ -108,7 +231,7 @@ Keywords used to describe the schema and not really used in validation, with som
 	]
 ```
 A special example would be if you define min like this: `min:{type:string, value:4}`, which would mean that this minimum will be applied only when a type is string, for other types this minimum will validate as true.  
-**NOTE:** Float minimum values are only allowed for number type, in any other case THEY WILL BE ROUNDED.
+**NOTE:** Float minimum values are only allowed for number type. In other cases they dont make sense.
 
 * **max** [e] {number | object:range-object | array[object:range-object]} - Defines a maximum for all data types. Same as **min**, see it for usage details.
 
@@ -197,6 +320,16 @@ More details
 JSON Schema draft 04: http://json-schema.org/latest/json-schema-validation.html  
 JSON Schema draft 03: http://tools.ietf.org/html/draft-zyp-json-schema-03
 
+To Do
+-----
+- [ ] Schema extends
+- [ ] Refactor the code (this will enable all other tasks to be completed with ease)
+- [ ] Better errors. Point out whitch part of the schema failed the validation.
+- [ ] Better $ref resolving, forbid the infinite loop
+- [ ] Comment the code! The thing you hate the most... but dont come back whining who's code is this after a year...
+- [ ] Hyper Schema
+- [ ] Node.js package
+
 Authors
 -------
 ![ivartech.com](https://dl.dropboxusercontent.com/u/2808807/img/ivartech-watermark.png)
@@ -213,7 +346,7 @@ Licence
 **Motherfuckin' MIT** protects our ass...
 
 `
-Copyright (C) 2013. Nikola Stamatovic Stamat < stamat@ivartech.com > ivartech.com  
+Copyright (C) 2013. ivartech.com - Nikola Stamatovic Stamat < stamat@ivartech.com >
   
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:  
   
