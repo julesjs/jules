@@ -91,6 +91,60 @@ schema7 = JSON.parse(JSON.stringify(schema6)); //clone
 schema7.maxProperties = 3;
 schema7.additionalProperties = {"type": "boolean"};
 
+var schema8 = {
+	"type": "integer",
+	"required": true,
+	"min": 4,
+	"max": 64,
+	"if": {
+		"condition": {
+			"numberPattern": "/^4.?/"
+		},
+		"then": {
+			"multipleOf": 2
+		},
+		"else": {
+			"min": 9,
+			"multipleOf": 3
+		}
+	}
+},
+
+schema9 = {
+	"type": "any",
+	"disallow": ["tesest", "boolean"],
+	"min": [
+		{
+			"type": "integer",
+			"value": 0,
+			"exclusive": true
+		},
+		{
+			"type": "string",
+			"value": 8
+		},
+		{
+			"value": 1
+		}
+	],
+	
+	"max": 64,
+	"properties": {
+		"/^ba/i" : {
+			"type": "integer",
+			"minimum": 1,
+			"exclusiveMinimum": true
+		},
+		"foo": {
+			"type": "string",
+			"min": 2,
+			"regex": "/[tes]{1,4}/i",
+			"forbidden": ["tese", "tess"]
+		}
+	}
+	
+}
+
 function echo(msg) {
 	var elem = document.createElement('p');
 	elem.innerHTML = msg;
@@ -117,3 +171,14 @@ echo('Validate `e` against `schema 6`: '+ jules.validate(e, schema6)); //true
 echo('Validate `f` against `schema 6`: '+ jules.validate(f, schema6)); //false
 
 echo('Validate `f` against `schema 7`: '+ jules.validate(f, schema7)); //true
+
+
+echo('Validate `33` against `schema 8`: '+ jules.validate(33, schema8)); //true
+echo('Validate `44` against `schema 8`: '+ jules.validate(44, schema8)); //true
+echo('Validate `64` against `schema 8`: '+ jules.validate(65, schema8)); //false
+
+echo('Validate `{}` against `schema 9`: '+ jules.validate({}, schema9)); //false
+
+echo('Validate `{"foo":"test","bar": 4, "baz": 8}` against `schema 9`: '+ jules.validate({"foo":"test","bar": 4, "baz": 8}, schema9)); //true
+
+echo('Validate `{"foo":"tess","bar": 4, "baz": 8}` against `schema 9`: '+ jules.validate({"foo":"tess","bar": 4, "baz": 8}, schema9)); //false

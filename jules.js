@@ -14,7 +14,7 @@
 //TODO: extends
 
 var jules = {};
-jules.aggregate_errors = true;
+jules.aggregate_errors = false;
 jules.dont_label = true;
 jules.errors = [];
 jules.error_messages = {};
@@ -42,7 +42,7 @@ jules.validate = function(value, schema, nickcallback) {
 };
 
 jules.initScope = function(schema) {
-	ivar.echo('=================');
+	//ivar.echo('=================');
 	if(!schema.id && !jules.dont_label)
 		schema.id = 'schema:'+ivar.crc32(JSON.stringify(schema));
 	
@@ -80,7 +80,7 @@ jules._validate = function(value, schema, aggregate_errors) {
 			if(jules.onEachFieldResult) jules.onEachFieldResult(value, i, schema, valid);
 			continue;
 		}
-		ivar.echo(schema.id+' - '+i+': '+valid);
+		//ivar.echo(schema.id+' - '+i+': '+valid);
 		if(jules.onEachFieldResult) jules.onEachFieldResult(value, i, schema, valid);
 		if(!valid) {
 			errors.push(jules.generateErrorMessage(value, i, schema));
@@ -101,7 +101,7 @@ jules._validate = function(value, schema, aggregate_errors) {
 
 jules.generateErrorMessage = function(value, i, schema) {
 	var key_val = schema[i];
-	var val = value.toString();
+	var val = value;
 	if(ivar.isObject(value))
 		value = JSON.stringify(value);
 	var sch = key_val.toString();
@@ -128,6 +128,8 @@ jules.validator._max = function(value, max) {
 };
 
 jules.validator._range = function(value, i, schema, exclusive) {
+	if(!ivar.isSet(value) || ivar.isBool(value)) return true;
+	
 	var mm = schema[i];
 	var fn = '_'+i.substring(0, 3);
 	var type = ivar.whatis(value);
@@ -220,7 +222,7 @@ jules.validator.only = jules.validator._enum;
 jules.validator.enum = jules.validator._enum;
  
 jules.validator.forbidden = function(value, i, schema) {
-	jules.validator._enum(value, i, schema, true);
+	return jules.validator._enum(value, i, schema, true);
 };
 
 jules.validator.type = function(value, i, schema) {

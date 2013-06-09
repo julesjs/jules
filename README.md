@@ -30,7 +30,7 @@ var error = jules.errors.getLast();
 You can change this option, so the validator will always pass through whole schema and it will generate all errors. The error reports do not look nice if you dont use id in every schema, but this issue will be fixed.
 
 ```javascript
-jules.aggregate_errors = true; //this option makes the validator collect all the errors. False by default;
+jules.aggregate_errors = true; //Collect all the errors. False by default;
 	
 var result = jules.validate(value, schema);
 var errors = jules.errors; //array of error messages
@@ -210,7 +210,77 @@ console.log(jules.validate(f, schema7)); //true
 ```
 An example using extensions:
 ```javascript
+var schema8 = {
+	"type": "integer",
+	"required": true,
+	"min": 4,
+	"max": 64,
+	"if": {
+		"condition": {
+			"numberPattern": "/^4.?/"
+		},
+		"then": {
+			"multipleOf": 2
+		},
+		"else": {
+			"min": 9,
+			"multipleOf": 3
+		}
+	}
+},
 
+schema9 = {
+	"type": "any",
+	"disallow": ["tesest", "boolean"],
+	"min": [
+		{
+			"type": "integer",
+			"value": 0,
+			"exclusive": true
+		},
+		{
+			"type": "string",
+			"value": 8
+		},
+		{
+			"value": 1
+		}
+	],
+	
+	"max": 64,
+	"properties": {
+		"/^ba/i" : {
+			"type": "integer",
+			"minimum": 1,
+			"exclusiveMinimum": true
+		},
+		"foo": {
+			"type": "string",
+			"min": 2,
+			"regex": "/[tes]{1,4}/i",
+			"forbidden": ["tese", "tess"]
+		}
+	}
+	
+};
+
+console.log('Validate `33` against `schema 8`');
+console.log(jules.validate(33, schema8)); //true
+
+console.log('Validate `44` against `schema 8`');
+console.log(jules.validate(44, schema8)); //true
+
+console.log('Validate `64` against `schema 8`');
+console.log(jules.validate(64, schema8)); //false
+
+console.log('Validate `{}` against `schema 9`');
+console.log(jules.validate({}, schema9)); //false
+
+console.log('Validate `{"foo":"test","bar": 4, "baz": 8}` against `schema 9`');
+console.log(jules.validate({"foo":"test","bar": 4, "baz": 8}, schema9)); //true
+
+console.log('Validate `{"foo":"tess","bar": 4, "baz": 8}` against `schema 9`');
+console.log(jules.validate({"foo":"tess","bar": 4, "baz": 8}, schema9)); //false
 ```
 
 Extending example
@@ -258,6 +328,7 @@ Warnings
 * Objects are stringified and passed through CRC32 algorithm for faster search while doing enum or unique checks. Be warned that **{a:1,b:2} != {b:2, a:1}**. This is only a temporary solution.
 
 * Be careful while using **$ref**, you can fall into an infinite loop.
+* You should know that getting external **$ref**-s is done synchronously!
 
 Compatibility
 -------------
