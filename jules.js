@@ -15,30 +15,34 @@
 
 var jules = {};
 jules.aggregate_errors = true;
-jules.dont_label = false;
+jules.dont_label = true;
 jules.errors = [];
 jules.error_messages = {};
-jules.error_messages['type'] = '{{schema_id}} Invalid type. Type of data should be {{key_val}}';
+//jules.error_messages['type'] = '{{schema_id}} Invalid type. Type of data should be {{key_val}}';
 jules.refs = {};
 jules.current_scope = null;
 
 jules.onEachField = undefined;
+jules.onEachFieldResult = undefined;
 jules.onEachSchema = undefined;
+jules.onEachSchemaResult = undefined;
+jules.onStart = undefined;
 jules.onFinish = undefined;
 
 jules.validate = function(value, schema, nickcallback) {
+	if(jules.onStart) jules.onStart(value, schema);
 	jules.errors = [];
 	if(ivar.isString(schema))
 		schema = jules.getSchemaByReference(schema);
 	jules.initScope(schema);
 	var res = jules._validate(value, schema);
-	if(nickcallback) jules.onFinish = nickcallback; //This is how you remind me... Or is it Someday? Go suck somewhere else...
-	if(jules.onFinish) jules.onFinish(res, value, schema);
+	if(nickcallback) nickcallback(value, schema, res); //This is how you remind me... Or is it Someday? Go suck somewhere else...
+	if(jules.onFinish) jules.onFinish(value, schema, res);
 	return res;
 };
 
 jules.initScope = function(schema) {
-	console.log('=================');
+	ivar.echo('=================');
 	if(!schema.id && !jules.dont_label)
 		schema.id = 'schema:'+ivar.crc32(JSON.stringify(schema));
 	
@@ -51,6 +55,7 @@ jules.initScope = function(schema) {
 };
 
 jules._validate = function(value, schema, aggregate_errors) {
+	if(jules.onEachSchema) jules.onEachSchema(value, schema);
 	aggregate_errors = ivar.isSet(aggregate_errors)?aggregate_errors:jules.aggregate_errors;
 	
 	var result = true;
@@ -61,6 +66,8 @@ jules._validate = function(value, schema, aggregate_errors) {
 		if(jules.current_scope.id !== schema.id && jules.refs.hasOwnProperty(schema.id)) {
 			jules.current_scope = jules.refs[schema.id];
 		}
+		if(jules.onEachField) jules.onEachField(value, i, schema, valid);
+		
 		var type = ivar.whatis(value);
 		if(type === 'integer' || type === 'float')
 			type = 'number';
@@ -70,11 +77,11 @@ jules._validate = function(value, schema, aggregate_errors) {
 		} else if (jules.validator[type] && jules.validator[type][i]) {
 			valid = jules.validator[type][i](value, i, schema);
 		} else {
-			if(jules.onEachField) jules.onEachField(value, i, schema, valid);
+			if(jules.onEachFieldResult) jules.onEachFieldResult(value, i, schema, valid);
 			continue;
 		}
-		//ivar.echo(schema.id+' - '+i+': '+valid);
-		if(jules.onEachField) jules.onEachField(i, value, schema, valid);
+		ivar.echo(schema.id+' - '+i+': '+valid);
+		if(jules.onEachFieldResult) jules.onEachFieldResult(value, i, schema, valid);
 		if(!valid) {
 			errors.push(jules.generateErrorMessage(value, i, schema));
 			if(!aggregate_errors) {
@@ -88,7 +95,7 @@ jules._validate = function(value, schema, aggregate_errors) {
 		jules.errors = jules.errors.concat(errors);
 		result = false;
 	}
-	if(jules.onEachSchema) jules.onEachSchema(result, value, schema);
+	if(jules.onEachSchemaResult) jules.onEachSchemaResult(value, schema, result, errors);
 	return result;
 };
 
@@ -100,7 +107,7 @@ jules.generateErrorMessage = function(value, i, schema) {
 	var sch = key_val.toString();
 	if(ivar.isObject(key_val))
 		sch = JSON.stringify(key_val);
-	var message = jules.error_messages[i]?jules.error_messages[i].template({keyword: i, value: val, schema_id: schema.id, key_val: sch}):'['+schema.id+ ']: '+i;
+	var message = jules.error_messages[i]?jules.error_messages[i].template({keyword: i, value: val, schema_id: schema.id, key_val: sch}):'['+schema.id+ ']: Invalid '+i;
 	return message;
 }
 
@@ -340,7 +347,7 @@ jules.getScope = function(ref, stack) {
 	if(!stack.hasOwnProperty(ref)) {
 		jules.getSchema(ref, function(ref_schema) {
 			if(!ivar.isSet(ref_schema.id))
-				ref_schema.id = ref;
+				ref_schema.id = ref;  //TODO: check why I wrote these lines
 			else
 				ref = ref_schema.id;
 			jules.initScope(ref_schema);
@@ -402,7 +409,7 @@ jules.validateSchema = function(schema, metaschema) {
 	if(metaschema && ivar.isString(metaschema))
 		metaschema = jules.getSchemaByReference(metaschema);
 		
-	return jules._validate(schema, metaschema, false);
+	return jules._validate(schema, metaschema);
 };
 
 ivar.namespace('jules.validator.object');
@@ -606,16 +613,26 @@ jules.validator.string.regex = function(value, i, schema) {
 jules.validator.string.pattern = jules.validator.string.regex;
 
 jules.formats = {}; //date-time YYYY-MM-DDThh:mm:ssZ, date YYYY-MM-DD, time hh:mm:ss, utc-milisec, regex, color, style, phone E.123, uri, url, email, ipv4, ipv6, host-name
-jules.formats.email = ivar.regex.email;
+jules.formats.email = function(value) {
+	return ivar.regex.email.test(value);
+};
 
-jules.formats.regex = ivar.regex.regex;
+jules.formats.regex = function(value) {
+	if(!value.toRegExp())
+		return false;
+	return true;
+};
 
-jules.formats.time = ivar.regex.time;
+jules.formats.time = function(value) {
+	return ivar.regex.time.test(value);
+};
 
-jules.formats.uri = ivar.regex.uri;
+jules.formats.uri = function(value) {
+	return ivar.regex.uri.test(value);
+};
 
 jules.validator.string.format = function(value, i, schema) {
-	return jules.formats[schema[i]].test(value);
+	return jules.formats[schema[i]](value);
 };
 
 jules.validator.string.minLength = jules.validator.min;
@@ -626,6 +643,8 @@ ivar.namespace('jules.validator.number');
 
 jules.validator.number.numberRegex = jules.validator.string.regex;
 jules.validator.number.numberPattern = jules.validator.string.regex;
+
+jules.validator.number.numberFormat = jules.validator.string.format;
 
 jules.validator.number.minimum = jules.validator.min;
 jules.validator.number.maximum = jules.validator.max;
@@ -644,7 +663,6 @@ jules.validator.number.dividableBy = function(value, i, schema) {
 	return value%schema[i] === 0;
 };
 jules.validator.number.multipleOf = jules.validator.number.dividableBy;
-
 
 // ====== Some utils... ====== //
 

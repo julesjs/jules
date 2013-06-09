@@ -381,9 +381,11 @@ String.prototype.swap = function(what, with_this, only_first) {
 
 String.prototype.toRegExp = function() {
 	var val = this;
+	var pts = [];
 	if(!ivar.regex.regex.test(val))
-		val = '/'+val+'/';
-	var pts = ivar.regex.regex.exec(val);
+		pts[1] = val;
+	else
+		pts = ivar.regex.regex.exec(val);
 	try {
 		return new RegExp(pts[1], pts[2]);
 	} catch (e) {
