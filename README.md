@@ -8,7 +8,7 @@
 
 About
 -----------
-An easily extensible JavaScript JSON validator written in declarative style which enabled easy extending and pay as you go execution, minimizing the number of functions executed and conditions passed while traversing through schema.   
+An easily extensible, simplest possible JavaScript JSON validator written in declarative style which enabled easy extending and pay as you go execution, minimizing the number of functions executed and conditions passed while traversing through schema.   
 This way it is an open platform for experimenting with validation rules and enabling easier creation of a future schema for all of us to benefit from.  
 It supports both draft-04 and draft-03 keywords. (except extends, whitch is soon to come)
 One **Bad Motherfucker**...  
