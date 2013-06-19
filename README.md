@@ -452,7 +452,7 @@ A special example would be if you define min like this: `min:{type:string, value
 
 * **pattern** or **regex** [e] {string:regex} - Validates a string instance against a Regular Expression built from a provided string writen in compilance to JavaScript's ECMA-262 standard. You can form the string in two ways `"ab+c"` or `"/ab+c/gi"`. Regex is just a self explanatory rename.
 
-* **format** [d04] {string:available-format-names} - Values of this keyword are predifined names of common regular expressions. Currently you can use one of the available at the time: `uri, regex, time, email`. More expressions are soon to come, nevertheless you can extend the set yourself. For ways how to do it, see **Extending example** chapter.
+* **format** [d04] {string:available-format-names} - Values of this keyword are predifined names of common regular expressions. Currently you can use one of the available at the time: `uri, regex, time, email, json`. More expressions are soon to come, nevertheless you can extend the set yourself. For ways how to do it, see **Extending example** chapter.
 
 * **minLength** {+integer=0} - Minimum number of characters. Must be a positive integer. Default value is 0.
 
