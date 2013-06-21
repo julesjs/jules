@@ -72,7 +72,7 @@ var valid = jules.validateSchema(schema (,metaschema));
 You only need to pass schema, if that schema has $schema property of course, if not you can pass a string uri or localy stored metaschema as a metaschema argument.
   
 **Options**  
-Two of three options are already described in Errors section of this chapter. The third one you can use if you intend to use this validator to validate simple schemas without detailed error reports. if you dont use **id**-s to uniquely identify your scopes, this validatoru uses CRC32 to uniquely identify them for you. This is a slow and almost unecessary solution used only for testing this validator and it is disabled by default. Three options and their default values are as follows:
+Two of three options are already described in Errors section of this chapter. The third one you can use if you intend to use this validator to validate simple schemas without detailed error reports. if you dont use **id**-s to uniquely identify your scopes, this validator uses CRC32 to uniquely identify them for you. This is a slow and almost unecessary solution used only for testing this validator and it is disabled by default. Three options and their default values are as follows:
 ```javascript
 	jules.dont_label = true;
 	jules.error_messages = {};
@@ -325,8 +325,6 @@ So this is all you need to know about extending. It is very simple. If a keyword
 
 Warnings
 --------
-* Objects are stringified and passed through CRC32 algorithm for faster search while doing enum or unique checks. Be warned that **{a:1,b:2} != {b:2, a:1}**. This is only a temporary solution.
-
 * Be careful while using **$ref**, you can fall into an infinite loop.
 * You should know that getting external **$ref**-s is done synchronously!
 
@@ -350,7 +348,7 @@ Supported schema keywords
 
 Keywords used to describe the schema and not really used in validation, with some obvious exceptions.  
 
-* **id** {string:uri} - Unique identificator of the schema, in URI format. Listen up maggots, this one is important for $ref resolving. It's usage is RECOMMENDED but if not provided the schema wil be identified by a CRC32 or $ref URI.
+* **id** {string:uri} - Unique identificator of the schema, in URI format. Listen up maggots, this one is important for $ref resolving. It's usage is RECOMMENDED but if not provided the schema wil be identified by a CRC32 with sorted parameters or $ref URI.
 
 * **$schema** {string:uri} - If you want to check if your JSON schema is valid supply the meta-schema URI in this property and call `jules.validateSchema(your_json_schema)`. Guys who write JSON schema say it is RECOMMENDED to supply this property.
 
@@ -387,7 +385,7 @@ Keywords used to describe the schema and not really used in validation, with som
 
 * **disallow** [d03] {string:type-enum | array[string:type-enum]} - Describes which data types are NOT allowed. Can be a string or an array of strings, see **type**.
 
-* **enum** or **only** [e] {array[any]} - Lists all allowed values in an array. Your instance MUST be equal to one of lisred values. Objects and array values are submited to CRC32 so the search could be performed faster (via hash tables). **NOTE:** That properties in object are stored without an order, so `{a:1,b:2} !== {b:2, a:1}`
+* **enum** or **only** [e] {array[any]} - Lists all allowed values in an array. Your instance MUST be equal to one of listed values. Objects and array values are submited to CRC32 so the search could be performed faster (via hash tables). All of enum object's properties are ordered and then submited to CRC32 (this is done because JavaScript object properties are unordered), then the value object is processed the same way, and then the comparison between objects can be done very fast in order to see if the object is listed in enum field or not. 
 
 * **forbidden** [e] {array[any]} - Lists all forbidden values of an instance. Your instance MUST NOT equal to any of forbidden values. See **enum**.
 

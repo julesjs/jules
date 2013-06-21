@@ -12,7 +12,7 @@ Array.prototype.find=function(a,b){var c=ivar.isRegExp(a);if(0<this.length)for(v
 Array.prototype.getLast=function(){return this[this.length-1]};Array.prototype.each=function(a,b){var c=0,d=1;b&&(d=-1,c=this.length-1);for(var e=0;e<this.length;e++)a(c,this[c]),c+=d};String.prototype.each=Array.prototype.each;Array.prototype.equal=function(a){var b=this;if(b===a)return!0;if(b.length!==a.length)return!1;b.each(function(c){if(b[c]!==a[c])return!1});return!0};Array.prototype.rm=function(a){return this.splice(a,1)};
 Array.prototype.remove=function(a){if(ivar.isString(a)&&ivar.regex.regex.test(a)||ivar.isRegExp(a))return ivar.patternRemove(this,a);a=this.find(a);return-1<a?this.rm(a):!1};ivar.patternRemove=function(a,b){ivar.isString(b)&&(b=b.toRegExp());if(ivar.isArray(a))for(var c=0;c<a.length;c++)b.test(a[c])&&a.rm(c);else if("object"===typeof a)for(c in a)b.test(c)&&delete a[c];return a};
 ivar.getAdditionalProperties=function(a,b,c){a=ivar.getProperties(value);if(b&&ivar.isArray(b))for(var d=0;d<b.length;d++)a.remove(b[d]);if(b&&ivar.isArray(c))for(d=0;d<c.length;d++)a.remove(c[d]);return a};Array.prototype.insert=function(a,b){return this.splice(a,0,b)};Array.prototype.shuffle=function(){for(var a=[];0!==this.length;){var b=Math.floor(Math.random()*this.length);a.push(this[b]);this.splice(b,1)}return a};
-Array.prototype.toObject=function(){for(var a={},b=0;b<this.length;b++)a[b]=this[b];return a};ivar.toMapKey=function(a){ivar.isNumber(a)?a=a.toString():ivar.isBool(a)?a="bool_"+a:ivar.isFunction(a)?a="fn_"+a.parseName():ivar.isDate(a)?a="date_"+a.getTime():ivar.isObject(a)?a="obj_"+ivar.crc32(JSON.stringify(a)):ivar.isArray(a)&&(a="arr_"+a.toString());return a};
+Array.prototype.toObject=function(){for(var a={},b=0;b<this.length;b++)a[b]=this[b];return a};
 Array.prototype.map=function(a){for(var b={},c=0;c<this.length;c++){var d=this[c];ivar.isSet(a)&&(d=this[c][a]);d=ivar.toMapKey(d);!b.hasOwnProperty(d)?b[d]=[c]:b[d].push(c)}return b};String.prototype.hasOwnProperty("startsWith")||(String.prototype.startsWith=function(a,b){return this.substring(b,a.length)===a});String.prototype.hasOwnProperty("endsWith")||(String.prototype.endsWith=function(a,b){b||(b=this.length);return this.substring(b-a.length,b)===a});
 String.prototype.hasOwnProperty("trim")||(String.prototype.trim=function(){return this.replace(/^\s+|\s+$/g,"")});String.prototype.hasOwnProperty("trimLeft")||(String.prototype.trimLeft=function(){return this.replace(/^\s+/,"")});String.prototype.hasOwnProperty("trimRight")||(String.prototype.trimRight=function(){return this.replace(/\s+$/,"")});String.prototype.removePrefix=function(a){return this.substring(a.length,this.length)};
 String.prototype.removeSufix=function(a){return this.substring(0,this.length-a.length)};String.prototype.removeFirst=function(){return this.substring(1,this.length)};String.prototype.removeLast=function(){return this.substring(0,this.length-1)};String.prototype.getFirst=Array.prototype.getFirst;String.prototype.getLast=Array.prototype.getLast;
@@ -40,6 +40,50 @@ String.prototype.parseJSON = function() {
 		}
 	}
 	return;
+};
+
+ivar.sortProperties = function(o, fn) {
+	var props = [];
+	var res = {};
+	for(var i in o) {
+		props.push(i);
+	}
+	props = props.sort(fn);
+	
+	for(var i = 0; i < props.length; i++) {
+		if(ivar.is(o[props[i]], 'object'))
+			o[props[i]] = ivar.sortProperties(o[props[i]]);
+		res[props[i]] = o[props[i]];
+	}
+	
+	return res;
+};
+
+ivar.objectCRC = function(o) {
+	return ivar.crc32(JSON.stringify(ivar.sortProperties(o)));
+};
+
+ivar.toMapKey = function(value) {
+	var type = ivar.whatis(value);
+	
+	if (type === 'function') {
+		value = value.parseName()+_+ivar.crc32(value.toString());
+	} else if (type === 'date') {
+		value = value.getTime();
+	} else if (type === 'object') {
+		value = ivar.objectCRC(value);
+	} else if (type === 'array') {
+		value = ivar.arrayCRC(value);
+	}
+	
+	return  type+'_'+value;
+};
+
+ivar.arrayCRC = function(a) {
+	for(var i = 0; i < a.length; i++) {
+		a[i] = ivar.toMapKey(a[i]);
+	}
+	return ivar.crc32(a.toString());
 };
 
 /*
@@ -257,6 +301,7 @@ jules.validator._enum = function(value, i, schema, not) {
 		schema[i] = schema[i].map();
 		
 	value = ivar.toMapKey(value);
+	
 	var res = schema[i].hasOwnProperty(value);
 	return not? !res: res;
 }; 
